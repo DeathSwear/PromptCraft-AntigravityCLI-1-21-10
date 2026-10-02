@@ -64,7 +64,7 @@ public class DestructionTask implements Task {
             BlockState state = world.getBlockState(pos);
             BlockEntity be = world.getBlockEntity(pos);
 
-            snapshotList.add(new BlockSnapshot(pos, state, be != null ? be.createNbt() : null));
+            snapshotList.add(new BlockSnapshot(pos, state, be != null ? be.createNbt(world.getRegistryManager()) : null));
 
             if (!state.isAir()) {
                 if (animation) {
@@ -93,7 +93,7 @@ public class DestructionTask implements Task {
             world.setBlockState(snap.pos(), snap.state(), BlockPlacementUtil.flagsFor(snap.state()));
             if (snap.nbt() != null) {
                 BlockEntity be = world.getBlockEntity(snap.pos());
-                if (be != null) be.readNbt(snap.nbt());
+                if (be != null) be.read(snap.nbt(), world.getRegistryManager());
             }
         }
         if (session != null) session.markDestructionComplete();

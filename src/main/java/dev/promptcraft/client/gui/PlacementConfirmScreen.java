@@ -38,10 +38,7 @@ public class PlacementConfirmScreen extends Screen {
     }
 
     private void confirm() {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeBlockPos(anchor);
-        buf.writeInt(rotationSteps);
-        ClientPlayNetworking.send(PromptCraftNetworking.CONFIRM_PLACEMENT_PACKET, buf);
+        ClientPlayNetworking.send(new dev.promptcraft.network.PromptCraftPayloads.ConfirmPlacementPayload(anchor, rotationSteps));
         GhostPreviewState.cancel();
         if (this.client != null) this.client.setScreen(null);
     }

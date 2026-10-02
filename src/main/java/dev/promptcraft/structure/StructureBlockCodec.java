@@ -18,12 +18,8 @@ public final class StructureBlockCodec {
         String[] parts = encoded.split("\\[", 2);
         String blockId = parts[0];
 
-        Identifier id;
-        try {
-            id = new Identifier(blockId);
-        } catch (Exception e) {
-            return Optional.empty();
-        }
+        Identifier id = Identifier.tryParse(blockId);
+        if (id == null) return Optional.empty();
 
         Optional<Block> blockOpt = Registries.BLOCK.getOrEmpty(id);
         if (blockOpt.isEmpty()) return Optional.empty();

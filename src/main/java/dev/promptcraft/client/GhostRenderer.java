@@ -125,7 +125,6 @@ public final class GhostRenderer {
 
         Matrix4f m = context.matrixStack().peek().getPositionMatrix();
         var tess = net.minecraft.client.render.Tessellator.getInstance();
-        var buf = tess.getBuffer();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -133,23 +132,23 @@ public final class GhostRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.setShader(net.minecraft.client.render.GameRenderer::getPositionColorProgram);
 
-        buf.begin(net.minecraft.client.render.VertexFormat.DrawMode.QUADS,
+        var buf = tess.begin(net.minecraft.client.render.VertexFormat.DrawMode.QUADS,
                   net.minecraft.client.render.VertexFormats.POSITION_COLOR);
         float x1 = (float) box.minX, y1 = (float) box.minY, z1 = (float) box.minZ;
         float x2 = (float) box.maxX, y2 = (float) box.maxY, z2 = (float) box.maxZ;
-        buf.vertex(m, x1, y1, z1).color(r, g, bl, a).next(); buf.vertex(m, x2, y1, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y1, z2).color(r, g, bl, a).next(); buf.vertex(m, x1, y1, z2).color(r, g, bl, a).next();
-        buf.vertex(m, x1, y2, z2).color(r, g, bl, a).next(); buf.vertex(m, x2, y2, z2).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y2, z1).color(r, g, bl, a).next(); buf.vertex(m, x1, y2, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x1, y1, z1).color(r, g, bl, a).next(); buf.vertex(m, x1, y2, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y2, z1).color(r, g, bl, a).next(); buf.vertex(m, x2, y1, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y1, z2).color(r, g, bl, a).next(); buf.vertex(m, x2, y2, z2).color(r, g, bl, a).next();
-        buf.vertex(m, x1, y2, z2).color(r, g, bl, a).next(); buf.vertex(m, x1, y1, z2).color(r, g, bl, a).next();
-        buf.vertex(m, x1, y1, z2).color(r, g, bl, a).next(); buf.vertex(m, x1, y2, z2).color(r, g, bl, a).next();
-        buf.vertex(m, x1, y2, z1).color(r, g, bl, a).next(); buf.vertex(m, x1, y1, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y1, z1).color(r, g, bl, a).next(); buf.vertex(m, x2, y2, z1).color(r, g, bl, a).next();
-        buf.vertex(m, x2, y2, z2).color(r, g, bl, a).next(); buf.vertex(m, x2, y1, z2).color(r, g, bl, a).next();
-        tess.draw();
+        buf.vertex(m, x1, y1, z1).color(r, g, bl, a); buf.vertex(m, x2, y1, z1).color(r, g, bl, a);
+        buf.vertex(m, x2, y1, z2).color(r, g, bl, a); buf.vertex(m, x1, y1, z2).color(r, g, bl, a);
+        buf.vertex(m, x1, y2, z2).color(r, g, bl, a); buf.vertex(m, x2, y2, z2).color(r, g, bl, a);
+        buf.vertex(m, x2, y2, z1).color(r, g, bl, a); buf.vertex(m, x1, y2, z1).color(r, g, bl, a);
+        buf.vertex(m, x1, y1, z1).color(r, g, bl, a); buf.vertex(m, x1, y2, z1).color(r, g, bl, a);
+        buf.vertex(m, x2, y2, z1).color(r, g, bl, a); buf.vertex(m, x2, y1, z1).color(r, g, bl, a);
+        buf.vertex(m, x2, y1, z2).color(r, g, bl, a); buf.vertex(m, x2, y2, z2).color(r, g, bl, a);
+        buf.vertex(m, x1, y2, z2).color(r, g, bl, a); buf.vertex(m, x1, y1, z2).color(r, g, bl, a);
+        buf.vertex(m, x1, y1, z2).color(r, g, bl, a); buf.vertex(m, x1, y2, z2).color(r, g, bl, a);
+        buf.vertex(m, x1, y2, z1).color(r, g, bl, a); buf.vertex(m, x1, y1, z1).color(r, g, bl, a);
+        buf.vertex(m, x2, y1, z1).color(r, g, bl, a); buf.vertex(m, x2, y2, z1).color(r, g, bl, a);
+        buf.vertex(m, x2, y2, z2).color(r, g, bl, a); buf.vertex(m, x2, y1, z2).color(r, g, bl, a);
+        net.minecraft.client.render.BufferRenderer.drawWithGlobalProgram(buf.end());
 
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();

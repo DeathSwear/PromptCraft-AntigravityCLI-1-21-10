@@ -17,7 +17,7 @@ public final class PromptCraftItems {
     public static void register() {
         Registry.register(
                 Registries.ITEM,
-                new Identifier(PromptCraftMod.MOD_ID, "selection_brush"),
+                Identifier.of(PromptCraftMod.MOD_ID, "selection_brush"),
                 SELECTION_BRUSH
         );
     }

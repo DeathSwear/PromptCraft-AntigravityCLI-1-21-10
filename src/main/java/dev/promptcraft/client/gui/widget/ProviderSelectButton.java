@@ -13,8 +13,7 @@ public class ProviderSelectButton extends FlatButton {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (!this.visible) return;
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 
         int bgColor = this.isHovered() ? GuiPainter.COLOR_SLOT_HOVER : GuiPainter.COLOR_SLOT;
         int textColor = this.isHovered() ? GuiPainter.COLOR_TEXT_HOVER : GuiPainter.COLOR_TEXT;

@@ -35,7 +35,7 @@ public class HistoryManager {
         for (BlockSnapshot snap : snapshots) {
             BlockState currentState = world.getBlockState(snap.pos());
             BlockEntity currentBe = world.getBlockEntity(snap.pos());
-            oppositeSnapshots.add(new BlockSnapshot(snap.pos(), currentState, currentBe != null ? currentBe.createNbt() : null));
+            oppositeSnapshots.add(new BlockSnapshot(snap.pos(), currentState, currentBe != null ? currentBe.createNbt(world.getRegistryManager()) : null));
         }
 
         toStackMap.computeIfAbsent(player.getUuid(), k -> new ArrayDeque<>()).push(oppositeSnapshots);

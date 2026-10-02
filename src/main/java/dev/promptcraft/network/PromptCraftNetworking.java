@@ -1,6 +1,5 @@
 package dev.promptcraft.network;
 
-import dev.promptcraft.PromptCraftMod;
 import dev.promptcraft.config.PromptCraftConfig;
 import dev.promptcraft.config.PromptCraftConfigManager;
 import dev.promptcraft.config.PromptCraftEnv;
@@ -11,89 +10,57 @@ import dev.promptcraft.session.PendingPrompt;
 import dev.promptcraft.session.PromptSessionManager;
 import dev.promptcraft.structure.PromptCraftStructure;
 import dev.promptcraft.structure.StructureRotationUtil;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class PromptCraftNetworking {
-    public static final Identifier SELECTION_SYNC_PACKET = new Identifier(PromptCraftMod.MOD_ID, "selection_sync");
-    public static final Identifier OPEN_GUI_PACKET = new Identifier(PromptCraftMod.MOD_ID, "open_gui");
-    public static final Identifier SAVE_GUI_PACKET = new Identifier(PromptCraftMod.MOD_ID, "save_gui");
-    public static final Identifier REQUEST_OPEN_GUI_PACKET = new Identifier(PromptCraftMod.MOD_ID, "request_open_gui");
-    public static final Identifier GUI_ACTION_PACKET = new Identifier(PromptCraftMod.MOD_ID, "gui_action");
-    public static final Identifier AI_STREAM_PACKET = new Identifier(PromptCraftMod.MOD_ID, "ai_stream");
-    public static final Identifier START_FREE_PLACEMENT_PACKET = new Identifier(PromptCraftMod.MOD_ID, "start_free_placement");
-    public static final Identifier CANCEL_FREE_PLACEMENT_PACKET = new Identifier(PromptCraftMod.MOD_ID, "cancel_free_placement");
-    public static final Identifier CONFIRM_PLACEMENT_PACKET = new Identifier(PromptCraftMod.MOD_ID, "confirm_placement");
-    public static final Identifier BUILD_PROGRESS_PACKET = new Identifier(PromptCraftMod.MOD_ID, "build_progress");
 
     public static void registerServerReceivers() {
-        ServerPlayNetworking.registerGlobalReceiver(SAVE_GUI_PACKET, (server, player, handler, buf, responseSender) -> {
-            String provider = buf.readString();
-
-            int keyCount = buf.readInt();
-            Map<String, String> apiKeys = new HashMap<>();
-            for (int i = 0; i < keyCount; i++) {
-                apiKeys.put(buf.readString(), buf.readString());
-            }
-
-            String model = buf.readString();
-            boolean showPreview = buf.readBoolean();
-            String language = buf.readString();
-            String themeColor = buf.readString();
-            boolean thickOutline = buf.readBoolean();
-            float fillOpacity = buf.readFloat();
-            boolean outlineThroughBlocks = buf.readBoolean();
-
-            boolean selectionLimitEnabled = buf.readBoolean();
-            int maxSelectionWidth = buf.readInt();
-            int maxSelectionHeight = buf.readInt();
-            int maxSelectionDepth = buf.readInt();
-
-            server.execute(() -> {
+        ServerPlayNetworking.registerGlobalReceiver(PromptCraftPayloads.SaveGuiPayload.ID, (payload, context) -> {
+            context.server().execute(() -> {
+                ServerPlayerEntity player = context.player();
                 if (!dev.promptcraft.PromptCraftCommands.hasAccess(player)) return;
 
-                PromptCraftEnv.saveApiKeys(apiKeys);
+                PromptCraftEnv.saveApiKeys(payload.apiKeys());
                 PromptCraftConfig config = PromptCraftConfigManager.get();
-                config.provider = provider;
-                config.model = model;
-                config.showSelectionPreview = showPreview;
-                config.language = language;
-                config.themeColor = themeColor;
-                config.thickSelectionOutline = thickOutline;
-                config.selectionFillOpacity = Math.max(0.0f, Math.min(1.0f, fillOpacity));
-                config.selectionOutlineThroughBlocks = outlineThroughBlocks;
+                config.provider = payload.provider();
+                config.model = payload.model();
+                config.showSelectionPreview = payload.showPreview();
+                config.language = payload.language();
+                config.themeColor = payload.themeColor();
+                config.thickSelectionOutline = payload.thickOutline();
+                config.selectionFillOpacity = Math.max(0.0f, Math.min(1.0f, payload.fillOpacity()));
+                config.selectionOutlineThroughBlocks = payload.outlineThroughBlocks();
 
-                config.selectionLimitEnabled = selectionLimitEnabled;
-                config.maxSelectionWidth = Math.max(1, maxSelectionWidth);
-                config.maxSelectionHeight = Math.max(1, maxSelectionHeight);
-                config.maxSelectionDepth = Math.max(1, maxSelectionDepth);
+                config.selectionLimitEnabled = payload.selectionLimitEnabled();
+                config.maxSelectionWidth = Math.max(1, payload.maxSelectionWidth());
+                config.maxSelectionHeight = Math.max(1, payload.maxSelectionHeight());
+                config.maxSelectionDepth = Math.max(1, payload.maxSelectionDepth());
 
                 PromptCraftConfigManager.save();
             });
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(REQUEST_OPEN_GUI_PACKET, (server, player, handler, buf, responseSender) -> {
-            server.execute(() -> {
+        ServerPlayNetworking.registerGlobalReceiver(PromptCraftPayloads.RequestOpenGuiPayload.ID, (payload, context) -> {
+            context.server().execute(() -> {
+                ServerPlayerEntity player = context.player();
                 if (dev.promptcraft.PromptCraftCommands.hasAccess(player)) {
                     openSettingsGui(player);
                 }
             });
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(GUI_ACTION_PACKET, (server, player, handler, buf, responseSender) -> {
-            String action = buf.readString();
-            String promptText = buf.readString();
+        ServerPlayNetworking.registerGlobalReceiver(PromptCraftPayloads.GuiActionPayload.ID, (payload, context) -> {
+            String action = payload.action();
+            String promptText = payload.promptText();
 
-            server.execute(() -> {
+            context.server().execute(() -> {
+                ServerPlayerEntity player = context.player();
                 boolean isGenOrEdit = "generate".equals(action) || "edit".equals(action);
 
                 if (!dev.promptcraft.PromptCraftCommands.hasAccess(player)) {
@@ -116,9 +83,6 @@ public class PromptCraftNetworking {
                     boolean isFreeMode = "free".equals(config.generationMode);
 
                     if (isFreeMode) {
-                        // Реальный размер зоны здесь ещё неизвестен - его определит сам ИИ.
-                        // Плейсхолдер (0,0,0) будет заменён на настоящие координаты после
-                        // подтверждения размещения (см. CONFIRM_PLACEMENT_PACKET ниже).
                         PendingPrompt prompt = new PendingPrompt(promptText, BlockPos.ORIGIN, BlockPos.ORIGIN, 0, 0, 0);
                         PromptSessionManager.setLast(player, prompt);
                         executeFreeBuildProcess(player, prompt);
@@ -192,11 +156,12 @@ public class PromptCraftNetworking {
             });
         });
 
-        ServerPlayNetworking.registerGlobalReceiver(CONFIRM_PLACEMENT_PACKET, (server, player, handler, buf, responseSender) -> {
-            BlockPos anchor = buf.readBlockPos();
-            int rotationSteps = buf.readInt();
+        ServerPlayNetworking.registerGlobalReceiver(PromptCraftPayloads.ConfirmPlacementPayload.ID, (payload, context) -> {
+            BlockPos anchor = payload.anchor();
+            int rotationSteps = payload.rotationSteps();
 
-            server.execute(() -> {
+            context.server().execute(() -> {
+                ServerPlayerEntity player = context.player();
                 if (!dev.promptcraft.PromptCraftCommands.hasAccess(player) || !player.isCreative()) return;
 
                 var sessionOpt = PromptSessionManager.getActiveGeneration(player);
@@ -238,55 +203,31 @@ public class PromptCraftNetworking {
     }
 
     public static void syncSelection(ServerPlayerEntity player, PlayerSelection selection) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeBoolean(selection.hasFirst());
-        if (selection.hasFirst()) buf.writeBlockPos(selection.getFirst());
-        buf.writeBoolean(selection.hasSecond());
-        if (selection.hasSecond()) buf.writeBlockPos(selection.getSecond());
-        ServerPlayNetworking.send(player, SELECTION_SYNC_PACKET, buf);
+        ServerPlayNetworking.send(player, new PromptCraftPayloads.SelectionSyncPayload(
+                selection.hasFirst(), selection.getFirst(),
+                selection.hasSecond(), selection.getSecond()
+        ));
     }
 
     public static void openSettingsGui(ServerPlayerEntity player) {
-        PacketByteBuf buf = PacketByteBufs.create();
         PromptCraftConfig config = PromptCraftConfigManager.get();
-
-        buf.writeString(config.provider);
-
         Map<String, String> keys = PromptCraftEnv.getAllApiKeys();
-        buf.writeInt(keys.size());
-        for (Map.Entry<String, String> entry : keys.entrySet()) {
-            buf.writeString(entry.getKey());
-            buf.writeString(entry.getValue());
-        }
 
-        buf.writeString(config.model);
-        buf.writeBoolean(config.showSelectionPreview);
-        buf.writeString(config.language);
-        buf.writeString(config.themeColor);
-        buf.writeBoolean(config.thickSelectionOutline);
-        buf.writeFloat(config.selectionFillOpacity);
-        buf.writeBoolean(config.selectionOutlineThroughBlocks);
-
-        buf.writeBoolean(config.selectionLimitEnabled);
-        buf.writeInt(config.maxSelectionWidth);
-        buf.writeInt(config.maxSelectionHeight);
-        buf.writeInt(config.maxSelectionDepth);
-
-        ServerPlayNetworking.send(player, OPEN_GUI_PACKET, buf);
+        ServerPlayNetworking.send(player, new PromptCraftPayloads.OpenGuiPayload(
+                config.provider, keys, config.model, config.showSelectionPreview,
+                config.language, config.themeColor, config.thickSelectionOutline,
+                config.selectionFillOpacity, config.selectionOutlineThroughBlocks,
+                config.selectionLimitEnabled, config.maxSelectionWidth,
+                config.maxSelectionHeight, config.maxSelectionDepth
+        ));
     }
 
     public static void sendAiStreamEvent(ServerPlayerEntity player, String eventType, String payload) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(eventType);
-        buf.writeString(payload == null ? "" : payload);
-        ServerPlayNetworking.send(player, AI_STREAM_PACKET, buf);
+        ServerPlayNetworking.send(player, new PromptCraftPayloads.AiStreamPayload(eventType, payload));
     }
 
     public static void sendBuildProgress(ServerPlayerEntity player, int percent, boolean active) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeInt(percent);
-        buf.writeBoolean(active);
-        ServerPlayNetworking.send(player, BUILD_PROGRESS_PACKET, buf);
+        ServerPlayNetworking.send(player, new PromptCraftPayloads.BuildProgressPayload(percent, active));
     }
 
     private static void executeBuildProcess(ServerPlayerEntity player, PendingPrompt prompt) {
@@ -340,14 +281,7 @@ public class PromptCraftNetworking {
 
                     player.sendMessage(Text.literal(PromptCraftLang.t("AI response received! Position the preview and confirm placement.", "Ответ ИИ получен! Наведите предпросмотр и подтвердите размещение.")).formatted(Formatting.GREEN), false);
 
-                    PacketByteBuf buf = PacketByteBufs.create();
-                    buf.writeString(new com.google.gson.Gson().toJson(structure));
-                    ServerPlayNetworking.send(player, START_FREE_PLACEMENT_PACKET, buf);
-
-                    // Сессия и AiStreamState.generating намеренно НЕ сбрасываются здесь: пока призрак
-                    // не размещён, вкладка Create должна оставаться заблокированной, а Undo должен
-                    // работать как "Cancel Generation" (см. cancelGeneration). Событие "done" отправит
-                    // сам BuildTask, когда постройка будет реально завершена после подтверждения.
+                    ServerPlayNetworking.send(player, new PromptCraftPayloads.StartFreePlacementPayload(new com.google.gson.Gson().toJson(structure)));
                 });
             } else {
                 if (player.getServer() != null) {
@@ -371,7 +305,7 @@ public class PromptCraftNetworking {
         if (session.isGhostPending()) {
             session.setGhostPending(false);
             session.setPendingStructure(null);
-            ServerPlayNetworking.send(player, CANCEL_FREE_PLACEMENT_PACKET, PacketByteBufs.create());
+            ServerPlayNetworking.send(player, new PromptCraftPayloads.CancelFreePlacementPayload());
         } else if (session.isDestructionComplete()) {
             dev.promptcraft.structure.HistoryManager.undo(player);
         }

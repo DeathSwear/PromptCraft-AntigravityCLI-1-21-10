@@ -16,8 +16,7 @@ public class FlatButton extends ButtonWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (!this.visible) return;
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 
         boolean enabled = this.active;
         int bgColor = !enabled

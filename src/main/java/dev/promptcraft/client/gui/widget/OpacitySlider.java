@@ -32,8 +32,7 @@ public class OpacitySlider extends SliderWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (!this.visible) return;
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 
         int bgColor = this.isHovered() ? GuiPainter.COLOR_SLOT_HOVER : GuiPainter.COLOR_SLOT;
         int themeColorInt = ctx.themeColorArgb();

@@ -34,8 +34,7 @@ public class PasswordFieldWidget extends TextFieldWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (!this.visible) return;
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 
         int bgColor = this.isFocused() ? 0xFF3A3A3A : 0xFF2D2D2D;
         context.fill(

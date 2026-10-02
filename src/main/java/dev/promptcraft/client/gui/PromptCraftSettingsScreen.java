@@ -134,10 +134,7 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
 
     @Override
     public void sendAction(String action, String prompt, boolean keepOpen) {
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(action);
-        buf.writeString(prompt);
-        ClientPlayNetworking.send(PromptCraftNetworking.GUI_ACTION_PACKET, buf);
+        ClientPlayNetworking.send(new dev.promptcraft.network.PromptCraftPayloads.GuiActionPayload(action, prompt));
 
         if (keepOpen) {
             AiStreamState.reset();
@@ -195,29 +192,13 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
 
         Map<String, String> keys = state.apiKeysWith(state.provider(), apiTab.trimmedApiKey());
 
-        PacketByteBuf buf = PacketByteBufs.create();
-        buf.writeString(state.provider());
-
-        buf.writeInt(keys.size());
-        for (Map.Entry<String, String> entry : keys.entrySet()) {
-            buf.writeString(entry.getKey());
-            buf.writeString(entry.getValue());
-        }
-
-        buf.writeString(state.model());
-        buf.writeBoolean(state.showPreview());
-        buf.writeString(state.language());
-        buf.writeString(state.themeColor());
-        buf.writeBoolean(state.thickOutline());
-        buf.writeFloat(state.fillOpacity());
-        buf.writeBoolean(state.outlineThroughBlocks());
-
-        buf.writeBoolean(state.selectionLimitEnabled());
-        buf.writeInt(state.maxSelectionWidth());
-        buf.writeInt(state.maxSelectionHeight());
-        buf.writeInt(state.maxSelectionDepth());
-
-        ClientPlayNetworking.send(PromptCraftNetworking.SAVE_GUI_PACKET, buf);
+        ClientPlayNetworking.send(new dev.promptcraft.network.PromptCraftPayloads.SaveGuiPayload(
+                state.provider(), keys, state.model(), state.showPreview(),
+                state.language(), state.themeColor(), state.thickOutline(),
+                state.fillOpacity(), state.outlineThroughBlocks(),
+                state.selectionLimitEnabled(), state.maxSelectionWidth(),
+                state.maxSelectionHeight(), state.maxSelectionDepth()
+        ));
         state.clearDirty();
     }
 
@@ -302,11 +283,11 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (activeOverlay != null) {
-            return activeOverlay.mouseScrolled(mouseX, mouseY, amount);
+            return activeOverlay.mouseScrolled(mouseX, mouseY, verticalAmount);
         }
-        return super.mouseScrolled(mouseX, mouseY, amount);
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override
@@ -337,7 +318,7 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context);
+        this.renderBackground(context, mouseX, mouseY, delta);
 
         context.fill(layout.panelLeft(), layout.panelTop(), layout.panelRight(), layout.panelBottom(),
                 GuiPainter.COLOR_PANEL);

@@ -22,8 +22,7 @@ public class IconButton extends ButtonWidget {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        if (!this.visible) return;
+    public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 
         int bgColor = this.isHovered() ? GuiPainter.COLOR_SLOT_HOVER : GuiPainter.COLOR_SLOT;
         context.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);

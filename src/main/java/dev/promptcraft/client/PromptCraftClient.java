@@ -77,7 +77,7 @@ public class PromptCraftClient implements ClientModInitializer {
 
             while (openMenuKey.wasPressed()) {
                 if (client.player != null && client.currentScreen == null) {
-                    ClientPlayNetworking.send(PromptCraftNetworking.REQUEST_OPEN_GUI_PACKET, PacketByteBufs.create());
+                    ClientPlayNetworking.send(new dev.promptcraft.network.PromptCraftPayloads.RequestOpenGuiPayload());
                 }
             }
 
@@ -96,32 +96,30 @@ public class PromptCraftClient implements ClientModInitializer {
             }
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.SELECTION_SYNC_PACKET, (client, handler, buf, responseSender) -> {
-            boolean hasFirst = buf.readBoolean();
-            BlockPos first = hasFirst ? buf.readBlockPos() : null;
-            boolean hasSecond = buf.readBoolean();
-            BlockPos second = hasSecond ? buf.readBlockPos() : null;
-            client.execute(() -> { firstPos = first; secondPos = second; });
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.SelectionSyncPayload.ID, (payload, context) -> {
+            BlockPos first = payload.hasFirst() ? payload.first() : null;
+            BlockPos second = payload.hasSecond() ? payload.second() : null;
+            context.client().execute(() -> { firstPos = first; secondPos = second; });
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.AI_STREAM_PACKET, (client, handler, buf, responseSender) -> {
-            String eventType = buf.readString();
-            String payload = buf.readString();
-            client.execute(() -> {
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.AiStreamPayload.ID, (payload, context) -> {
+            String eventType = payload.eventType();
+            String pData = payload.payload();
+            context.client().execute(() -> {
                 switch (eventType) {
                     case "start" -> AiStreamState.reset();
-                    case "reasoning" -> AiStreamState.append(payload);
+                    case "reasoning" -> AiStreamState.append(pData);
                     case "done" -> AiStreamState.finish();
-                    case "error" -> AiStreamState.fail(payload);
+                    case "error" -> AiStreamState.fail(pData);
                     case "cancelled" -> AiStreamState.cancelled();
                     default -> {}
                 }
             });
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.START_FREE_PLACEMENT_PACKET, (client, handler, buf, responseSender) -> {
-            String json = buf.readString();
-            client.execute(() -> {
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.StartFreePlacementPayload.ID, (payload, context) -> {
+            String json = payload.structureJson();
+            context.client().execute(() -> {
                 try {
                     PromptCraftStructure structure = new Gson().fromJson(json, PromptCraftStructure.class);
                     GhostPreviewState.start(structure);
@@ -130,19 +128,19 @@ public class PromptCraftClient implements ClientModInitializer {
             });
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.CANCEL_FREE_PLACEMENT_PACKET, (client, handler, buf, responseSender) -> {
-            client.execute(() -> {
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.CancelFreePlacementPayload.ID, (payload, context) -> {
+            context.client().execute(() -> {
                 GhostPreviewState.cancel();
-                if (client.currentScreen instanceof PlacementConfirmScreen) {
-                    client.setScreen(null);
+                if (context.client().currentScreen instanceof PlacementConfirmScreen) {
+                    context.client().setScreen(null);
                 }
             });
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.BUILD_PROGRESS_PACKET, (client, handler, buf, responseSender) -> {
-            int percent = buf.readInt();
-            boolean active = buf.readBoolean();
-            client.execute(() -> {
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.BuildProgressPayload.ID, (payload, context) -> {
+            int percent = payload.percent();
+            boolean active = payload.active();
+            context.client().execute(() -> {
                 if (active) {
                     BuildProgressState.update(percent);
                 } else if (percent >= 100) {
@@ -153,43 +151,22 @@ public class PromptCraftClient implements ClientModInitializer {
             });
         });
 
-        ClientPlayNetworking.registerGlobalReceiver(PromptCraftNetworking.OPEN_GUI_PACKET, (client, handler, buf, responseSender) -> {
-            String provider = buf.readString();
-
-            int keyCount = buf.readInt();
-            java.util.Map<String, String> apiKeys = new java.util.HashMap<>();
-            for (int i = 0; i < keyCount; i++) {
-                apiKeys.put(buf.readString(), buf.readString());
-            }
-
-            String model = buf.readString();
-            boolean showPreview = buf.readBoolean();
-            String language = buf.readString();
-            String themeColor = buf.readString();
-            boolean thickOutline = buf.readBoolean();
-            float fillOpacity = buf.readFloat();
-            boolean outlineThroughBlocks = buf.readBoolean();
-
-            boolean selectionLimitEnabled = buf.readBoolean();
-            int maxSelectionWidth = buf.readInt();
-            int maxSelectionHeight = buf.readInt();
-            int maxSelectionDepth = buf.readInt();
-
-            client.execute(() -> client.setScreen(
+        ClientPlayNetworking.registerGlobalReceiver(dev.promptcraft.network.PromptCraftPayloads.OpenGuiPayload.ID, (payload, context) -> {
+            context.client().execute(() -> context.client().setScreen(
                     new PromptCraftSettingsScreen(
-                            provider,
-                            apiKeys,
-                            model,
-                            showPreview,
-                            language,
-                            themeColor,
-                            thickOutline,
-                            fillOpacity,
-                            outlineThroughBlocks,
-                            selectionLimitEnabled,
-                            maxSelectionWidth,
-                            maxSelectionHeight,
-                            maxSelectionDepth
+                            payload.provider(),
+                            payload.apiKeys(),
+                            payload.model(),
+                            payload.showPreview(),
+                            payload.language(),
+                            payload.themeColor(),
+                            payload.thickOutline(),
+                            payload.fillOpacity(),
+                            payload.outlineThroughBlocks(),
+                            payload.selectionLimitEnabled(),
+                            payload.maxSelectionWidth(),
+                            payload.maxSelectionHeight(),
+                            payload.maxSelectionDepth()
                     )
             ));
         });
@@ -272,8 +249,9 @@ public class PromptCraftClient implements ClientModInitializer {
                 if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                     pos2 = ((BlockHitResult) hit).getBlockPos();
                 } else {
-                    Vec3d eyePos = client.player.getCameraPosVec(context.tickDelta());
-                    Vec3d lookVec = client.player.getRotationVec(context.tickDelta());
+                    float tickDelta = context.tickCounter().getTickDelta(false);
+                    Vec3d eyePos = client.player.getCameraPosVec(tickDelta);
+                    Vec3d lookVec = client.player.getRotationVec(tickDelta);
                     pos2 = BlockPos.ofFloored(eyePos.add(lookVec.multiply(5.0D)));
                 }
             }
@@ -290,7 +268,6 @@ public class PromptCraftClient implements ClientModInitializer {
             Vec3d cameraPos = context.camera().getPos();
             Matrix4f matrix = context.matrixStack().peek().getPositionMatrix();
             Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder buffer = tessellator.getBuffer();
 
             int minX = Math.min(pos1.getX(), pos2.getX());
             int minY = Math.min(pos1.getY(), pos2.getY());
@@ -332,9 +309,9 @@ public class PromptCraftClient implements ClientModInitializer {
             float fillOpacity = Math.max(0.0f, Math.min(1.0f, config.selectionFillOpacity));
 
             if (fillOpacity > 0.0f) {
-                buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+                BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
                 drawFilledBox(matrix, buffer, fillBox, r, g, b, fillOpacity);
-                tessellator.draw();
+                BufferRenderer.drawWithGlobalProgram(buffer.end());
             }
 
             boolean outlineThroughBlocks = config.selectionOutlineThroughBlocks;
@@ -345,12 +322,12 @@ public class PromptCraftClient implements ClientModInitializer {
                 RenderSystem.enableDepthTest();
             }
 
-            buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
             float outlineThickness = config.thickSelectionOutline ? 0.035f : 0.008f;
             drawThickOutline(matrix, buffer, outlineBox, outlineThickness, r, g, b, 1.0f);
 
-            tessellator.draw();
+            BufferRenderer.drawWithGlobalProgram(buffer.end());
 
             RenderSystem.enableDepthTest();
 
@@ -384,18 +361,18 @@ public class PromptCraftClient implements ClientModInitializer {
     private void drawFilledBox(Matrix4f matrix, BufferBuilder buffer, Box box, float r, float g, float b, float a) {
         float minX = (float) box.minX; float minY = (float) box.minY; float minZ = (float) box.minZ;
         float maxX = (float) box.maxX; float maxY = (float) box.maxY; float maxZ = (float) box.maxZ;
-        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a).next();
-        buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a).next(); buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a).next();
+        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a);
+        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a);
+        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a);
+        buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a);
+        buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a);
+        buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a);
     }
 
     private void drawThickOutline(Matrix4f matrix, BufferBuilder buffer, Box box, float t, float r, float g, float b, float a) {

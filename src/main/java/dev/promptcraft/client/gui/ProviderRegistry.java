@@ -37,7 +37,7 @@ public final class ProviderRegistry {
     }
 
     private static Identifier icon(String file) {
-        return new Identifier(PromptCraftMod.MOD_ID, "textures/gui/" + file);
+        return Identifier.of(PromptCraftMod.MOD_ID, "textures/gui/" + file);
     }
 
     public static final Provider FALLBACK = new Provider(

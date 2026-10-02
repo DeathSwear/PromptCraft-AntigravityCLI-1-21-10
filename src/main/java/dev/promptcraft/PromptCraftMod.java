@@ -20,6 +20,7 @@ public class PromptCraftMod implements ModInitializer {
         PromptCraftItems.register();
         PromptCraftItemGroups.register();
         PromptCraftCommands.register();
+        dev.promptcraft.network.PromptCraftPayloads.register();
         PromptCraftNetworking.registerServerReceivers();
         TaskManager.init();
 

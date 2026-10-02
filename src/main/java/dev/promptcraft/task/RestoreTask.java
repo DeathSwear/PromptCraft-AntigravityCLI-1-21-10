@@ -35,7 +35,7 @@ public class RestoreTask implements Task {
             world.setBlockState(pos, state, BlockPlacementUtil.flagsFor(state));
             if (snap.nbt() != null) {
                 BlockEntity be = world.getBlockEntity(pos);
-                if (be != null) be.readNbt(snap.nbt());
+                if (be != null) be.read(snap.nbt(), world.getRegistryManager());
             }
 
             // Воспроизводим звук установки блока (каждый 5-й блок, чтобы не оглушить игрока)

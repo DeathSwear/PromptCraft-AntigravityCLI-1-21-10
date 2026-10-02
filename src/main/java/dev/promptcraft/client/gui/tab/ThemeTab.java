@@ -15,7 +15,7 @@ import net.minecraft.util.Identifier;
 public final class ThemeTab extends AbstractSettingsTab {
 
     private static final Identifier RESET_COLOR_ICON =
-            new Identifier(PromptCraftMod.MOD_ID, "textures/gui/reload_icon.png");
+            Identifier.of(PromptCraftMod.MOD_ID, "textures/gui/reload_icon.png");
 
     private static final int SV_SIZE = 80;
     private static final int SV_CELLS = 20;

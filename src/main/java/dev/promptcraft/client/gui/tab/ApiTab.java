@@ -22,7 +22,7 @@ import java.util.List;
 public final class ApiTab extends AbstractSettingsTab {
 
     private static final Identifier REFRESH_ICON =
-            new Identifier(PromptCraftMod.MOD_ID, "textures/gui/refresh_icon.png");
+            Identifier.of(PromptCraftMod.MOD_ID, "textures/gui/refresh_icon.png");
 
     private static final String[] BUILD_MODE_CODES = {"creative", "precise"};
 
