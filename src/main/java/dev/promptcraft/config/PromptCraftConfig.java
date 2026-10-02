@@ -1,9 +1,9 @@
 package dev.promptcraft.config;
 
 public class PromptCraftConfig {
-    public String provider = "nvidia";
-    public String baseUrl = "https://integrate.api.nvidia.com/v1";
-    public String model = "meta/llama-3.1-70b-instruct";
+    public String provider = "agy";
+    public String baseUrl = "";
+    public String model = "gemini-3.8-flash-high";
     public String accessMode = "admins_only";
     public String themeColor = "#17b95f"; // Default neon green
     public String language = "en"; // en or ru

@@ -15,6 +15,7 @@ public class GenerationSession {
 
     private volatile CompletableFuture<?> httpFuture;
     private volatile Closeable activeStream;
+    private volatile Process activeProcess;
 
     // --- Состояние свободного (AI-выбранного) размещения ---
     private volatile boolean ghostPending = false;
@@ -65,6 +66,14 @@ public class GenerationSession {
         this.activeStream = stream;
     }
 
+    public void setActiveProcess(Process process) {
+        this.activeProcess = process;
+    }
+
+    public Process getActiveProcess() {
+        return activeProcess;
+    }
+
     public void abortHttpRequest() {
         CompletableFuture<?> future = this.httpFuture;
         if (future != null) {
@@ -75,6 +84,14 @@ public class GenerationSession {
         if (stream != null) {
             try {
                 stream.close();
+            } catch (Exception ignored) {
+            }
+        }
+
+        Process process = this.activeProcess;
+        if (process != null) {
+            try {
+                process.destroyForcibly();
             } catch (Exception ignored) {
             }
         }

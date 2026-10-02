@@ -7,12 +7,16 @@ import com.google.gson.JsonParser;
 import dev.promptcraft.config.PromptCraftConfigManager;
 import net.minecraft.client.MinecraftClient;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /** Загрузка списка моделей у провайдера. Никакой отрисовки. */
@@ -32,6 +36,12 @@ public final class ModelListClient {
                              Consumer<String> onError) {
 
         ProviderRegistry.Provider provider = ProviderRegistry.byCode(providerCode);
+
+        if (provider.responseStyle() == ProviderRegistry.ResponseStyle.STATIC_LIST || "agy".equals(providerCode)) {
+            fetchAgyModels(onSuccess, onError);
+            return;
+        }
+
         String url = provider.modelsUrl();
 
         if (url == null || url.isBlank()) {
@@ -117,5 +127,38 @@ public final class ModelListClient {
         }
 
         return models;
+    }
+
+    private static void fetchAgyModels(Consumer<List<String>> onSuccess, Consumer<String> onError) {
+        CompletableFuture.supplyAsync(() -> {
+            List<String> models = new ArrayList<>();
+            String agyExec = dev.promptcraft.ai.AgyUtil.findAgyExecutable();
+            if (agyExec != null) {
+                try {
+                    Process process = new ProcessBuilder(agyExec, "models").start();
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            line = line.trim();
+                            if (line.isEmpty() || line.startsWith("Fetching")) continue;
+                            String[] parts = line.split("\\t");
+                            if (parts.length > 0 && !parts[0].isBlank()) {
+                                models.add(parts[0].trim());
+                            }
+                        }
+                    }
+                    process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Exception ignored) {
+                }
+            }
+            if (models.isEmpty()) {
+                models.addAll(ProviderRegistry.AGY_DEFAULT_MODELS);
+            }
+            return models;
+        }).thenAccept(models -> onClient(() -> onSuccess.accept(models)))
+          .exceptionally(ex -> {
+              onClient(() -> onSuccess.accept(ProviderRegistry.AGY_DEFAULT_MODELS));
+              return null;
+          });
     }
 }

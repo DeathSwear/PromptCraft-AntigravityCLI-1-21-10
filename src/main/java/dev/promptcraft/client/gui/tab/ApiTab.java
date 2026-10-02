@@ -59,7 +59,12 @@ public final class ApiTab extends AbstractSettingsTab {
         apiKeyField.setMaxLength(300);
         apiKeyField.setText(state().apiKeyFor(state().provider()));
         apiKeyField.setDrawsBackground(false);
-        apiKeyField.setChangedListener(text -> state().putApiKey(state().provider(), text));
+        apiKeyField.setChangedListener(text -> {
+            if (!"agy".equals(state().provider())) {
+                state().putApiKey(state().provider(), text);
+            }
+        });
+        updateApiKeyFieldVisibility();
 
         modelButton = add(new ModelSelectButton(ctx, x, y + 84, 160, 22,
                 Text.literal(shortenModelName(state().model())),
@@ -86,6 +91,22 @@ public final class ApiTab extends AbstractSettingsTab {
         state().setModel(ProviderRegistry.defaultModel(code));
         modelButton.setMessage(Text.literal(shortenModelName(state().model())));
         apiKeyField.setText(state().apiKeyFor(code));
+        updateApiKeyFieldVisibility();
+    }
+
+    private void updateApiKeyFieldVisibility() {
+        if (apiKeyField == null) return;
+        boolean isAgy = "agy".equals(state().provider());
+        apiKeyField.visible = !isAgy;
+        apiKeyField.active = !isAgy;
+        apiKeyField.setEditable(!isAgy);
+    }
+
+    @Override
+    protected void onVisibilityChanged(boolean visible) {
+        if (visible) {
+            updateApiKeyFieldVisibility();
+        }
     }
 
     // --- модели ---
@@ -109,8 +130,9 @@ public final class ApiTab extends AbstractSettingsTab {
     private void fetchModels() {
         if (isFetching) return;
 
+        boolean isAgy = "agy".equals(state().provider());
         String key = apiKeyField.getText().trim();
-        if (key.isEmpty()) {
+        if (!isAgy && key.isEmpty()) {
             fetchError = t("API key is empty!", "API ключ пуст!");
             return;
         }
@@ -186,6 +208,13 @@ public final class ApiTab extends AbstractSettingsTab {
 
         context.drawTextWithShadow(ctx.textRenderer(), t("Provider:", "Провайдер:"), x, y - 12, 0xFFFFFF);
         context.drawTextWithShadow(ctx.textRenderer(), t("API Key:", "API-ключ:"), x, y + 30, 0xFFFFFF);
+
+        if ("agy".equals(state().provider())) {
+            context.drawTextWithShadow(ctx.textRenderer(),
+                    t("CLI Authorization (No API Key needed)", "Авторизация через CLI (ключ не нужен)"),
+                    layout.contentX() + 2, y + 48, 0x55FF55);
+        }
+
         context.drawTextWithShadow(ctx.textRenderer(), t("Model:", "Модель:"), x, y + 72, 0xFFFFFF);
         context.drawTextWithShadow(ctx.textRenderer(), t("Generation Mode:", "Режим генерации:"), x, y + 114, 0xFFFFFF);
 
@@ -228,6 +257,7 @@ public final class ApiTab extends AbstractSettingsTab {
 
     /** Экрану нужен обрезанный ключ на сохранение. */
     public String trimmedApiKey() {
+        if ("agy".equals(state().provider())) return "";
         return apiKeyField == null ? "" : apiKeyField.getText().trim();
     }
 }

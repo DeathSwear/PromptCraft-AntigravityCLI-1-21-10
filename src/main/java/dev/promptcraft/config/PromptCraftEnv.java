@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Properties;
 
 public class PromptCraftEnv {
-    private static final String[] PROVIDERS = {"nvidia", "openai", "anthropic", "deepseek", "gemini", "xai", "openrouter"};
+    private static final String[] PROVIDERS = {"agy", "nvidia", "openai", "anthropic", "deepseek", "gemini", "xai", "openrouter"};
 
     public static String getApiKey(String provider) {
         Properties props = loadProperties();

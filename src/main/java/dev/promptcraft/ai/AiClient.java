@@ -17,15 +17,21 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -145,8 +151,9 @@ public class AiClient {
             boolean freeChoice, boolean enforceBounds, int attempt, int transientAttempt) {
 
         PromptCraftConfig config = PromptCraftConfigManager.get();
+        boolean isAgy = "agy".equals(config.provider);
         String apiKey = PromptCraftEnv.getApiKey(config.provider);
-        if (apiKey == null || apiKey.isEmpty()) {
+        if (!isAgy && (apiKey == null || apiKey.isEmpty())) {
             player.sendMessage(Text.literal(PromptCraftLang.t("API Key is missing! Please use /pmenu", "API-ключ отсутствует! Используйте /pmenu")).formatted(Formatting.RED), false);
             PromptCraftNetworking.sendAiStreamEvent(player, "error", "API key is missing.");
             return CompletableFuture.completedFuture(null);
@@ -160,6 +167,11 @@ public class AiClient {
         boolean precise = "precise".equals(config.buildMode);
         String systemPrompt = buildSystemPrompt(width, height, depth, freeChoice, precise);
         String userPrompt = "Build the following, respecting ALL rules above: " + originalPrompt + correctionNote;
+
+        if (isAgy) {
+            return requestBuildAgy(player, config, originalPrompt, correctionNote, systemPrompt, userPrompt,
+                    width, height, depth, session, freeChoice, enforceBounds, attempt, transientAttempt);
+        }
 
         HttpRequest request = buildRequest(config, apiKey, systemPrompt, userPrompt);
 
@@ -216,6 +228,170 @@ public class AiClient {
             if (structure == null) {
                 if (retriable[0] && transientAttempt < MAX_TRANSIENT_RETRIES) {
                     // Тихо повторяем, игрока не спамим.
+                    return retryAfterDelay(() -> requestBuildInternal(
+                            player, originalPrompt, correctionNote, width, height, depth,
+                            session, freeChoice, enforceBounds, attempt, transientAttempt + 1));
+                }
+                if (retriable[0]) {
+                    String msg = PromptCraftLang.t(
+                            "AI request failed after several attempts. Please try again.",
+                            "Запрос к ИИ не удался после нескольких попыток. Попробуйте ещё раз.");
+                    notifyPlayer(player, msg, msg, Formatting.RED);
+                    if (player.getServer() != null) {
+                        player.getServer().execute(() -> PromptCraftNetworking.sendAiStreamEvent(player, "error", msg));
+                    }
+                }
+                return CompletableFuture.completedFuture(null);
+            }
+            return validateAndRepair(player, originalPrompt, structure, width, height, depth, session, freeChoice, enforceBounds, attempt);
+        });
+    }
+
+    private static CompletableFuture<PromptCraftStructure> requestBuildAgy(
+            ServerPlayerEntity player, PromptCraftConfig config,
+            String originalPrompt, String correctionNote,
+            String systemPrompt, String userPrompt,
+            int width, int height, int depth, GenerationSession session,
+            boolean freeChoice, boolean enforceBounds, int attempt, int transientAttempt) {
+
+        final boolean[] retriable = {false};
+
+        CompletableFuture<PromptCraftStructure> processFuture = CompletableFuture.supplyAsync(() -> {
+            if (session.isCancelled()) return null;
+
+            String agyExecutable = AgyUtil.findAgyExecutable();
+            if (agyExecutable == null) {
+                String msg = PromptCraftLang.t("AGY CLI executable not found!", "Исполняемый файл AGY CLI не найден!");
+                notifyPlayer(player, msg, msg, Formatting.RED);
+                PromptCraftNetworking.sendAiStreamEvent(player, "error", msg);
+                return null;
+            }
+
+            String model = (config.model != null && !config.model.isBlank()) ? config.model : "gemini-3.8-flash-high";
+
+            List<String> cmd = new ArrayList<>();
+            cmd.add(agyExecutable);
+            cmd.add("--model");
+            cmd.add(model);
+            cmd.add("--disable-slash-commands");
+            cmd.add("--dangerously-skip-permissions");
+
+            ProcessBuilder pb = new ProcessBuilder(cmd);
+            String userHome = System.getProperty("user.home");
+            if (userHome != null) {
+                File homeDir = new File(userHome);
+                if (homeDir.exists()) pb.directory(homeDir);
+            }
+
+            Process process;
+            try {
+                process = pb.start();
+            } catch (IOException e) {
+                String msg = PromptCraftLang.t("Failed to start AGY CLI: ", "Не удалось запустить AGY CLI: ") + e.getMessage();
+                notifyPlayer(player, msg, msg, Formatting.RED);
+                PromptCraftNetworking.sendAiStreamEvent(player, "error", msg);
+                return null;
+            }
+
+            session.setActiveProcess(process);
+
+            // Feed prompt via stdin
+            String combinedPrompt = systemPrompt + "\n\n=== USER REQUEST ===\n" + userPrompt;
+            try (OutputStream os = process.getOutputStream();
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+                writer.write(combinedPrompt);
+                writer.flush();
+            } catch (IOException e) {
+                if (!session.isCancelled()) {
+                    process.destroyForcibly();
+                    retriable[0] = true;
+                }
+                return null;
+            }
+
+            // Capture stderr asynchronously
+            StringBuilder stderrAccumulator = new StringBuilder();
+            Thread stderrThread = new Thread(() -> {
+                try (BufferedReader errReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String errLine;
+                    while ((errLine = errReader.readLine()) != null) {
+                        stderrAccumulator.append(errLine).append('\n');
+                    }
+                } catch (Exception ignored) {}
+            }, "PromptCraft-AGY-Stderr");
+            stderrThread.setDaemon(true);
+            stderrThread.start();
+
+            // Stream stdout
+            StringBuilder stdoutAccumulator = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                boolean jsonStarted = false;
+                while (!session.isCancelled() && (line = reader.readLine()) != null) {
+                    stdoutAccumulator.append(line).append('\n');
+                    if (!jsonStarted) {
+                        if (line.trim().startsWith("{")) {
+                            jsonStarted = true;
+                        } else if (!line.isBlank()) {
+                            sendReasoning(player, line + "\n");
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                if (!session.isCancelled()) {
+                    retriable[0] = true;
+                }
+                return null;
+            }
+
+            try {
+                boolean finished = process.waitFor(REQUEST_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+                if (!finished) {
+                    process.destroyForcibly();
+                    String msg = PromptCraftLang.t("AGY CLI timed out.", "AGY CLI превысил время ожидания.");
+                    notifyPlayer(player, msg, msg, Formatting.RED);
+                    PromptCraftNetworking.sendAiStreamEvent(player, "error", msg);
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                process.destroyForcibly();
+                return null;
+            }
+
+            if (session.isCancelled()) {
+                process.destroyForcibly();
+                return null;
+            }
+
+            int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                String errText = stderrAccumulator.toString().trim();
+                if (errText.isEmpty()) errText = "exit code " + exitCode;
+                String msg = PromptCraftLang.t("AGY CLI error: ", "Ошибка AGY CLI: ") + errText;
+                notifyPlayer(player, msg, msg, Formatting.RED);
+                PromptCraftNetworking.sendAiStreamEvent(player, "error", msg);
+                return null;
+            }
+
+            String content = AgyUtil.stripAnsi(stdoutAccumulator.toString());
+            if (content.isBlank()) {
+                retriable[0] = true;
+                return null;
+            }
+
+            PromptCraftStructure parsed = parseStructureLenient(content);
+            if (parsed == null || parsed.operations == null || parsed.operations.isEmpty()) {
+                retriable[0] = true;
+                return null;
+            }
+            return parsed;
+        }, STREAM_EXECUTOR);
+
+        return processFuture.thenCompose(structure -> {
+            if (session.isCancelled()) return CompletableFuture.completedFuture(null);
+
+            if (structure == null) {
+                if (retriable[0] && transientAttempt < MAX_TRANSIENT_RETRIES) {
                     return retryAfterDelay(() -> requestBuildInternal(
                             player, originalPrompt, correctionNote, width, height, depth,
                             session, freeChoice, enforceBounds, attempt, transientAttempt + 1));
