@@ -14,7 +14,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -53,8 +52,8 @@ public class SelectionBrushItem extends Item {
     }
 
     @Override
-    public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
-        return TypedActionResult.pass(user.getStackInHand(hand));
+    public ActionResult use(World world, PlayerEntity user, Hand hand) {
+        return ActionResult.PASS;
     }
 
     public static void setFirstPosition(ServerPlayerEntity player, BlockPos pos) {

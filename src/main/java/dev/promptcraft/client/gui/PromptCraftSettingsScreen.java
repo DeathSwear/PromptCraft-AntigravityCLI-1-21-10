@@ -205,7 +205,11 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
     // --- ввод ---
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
+        int keyCode = input.key();
+        int scanCode = input.scancode();
+        int modifiers = input.modifiers();
+
         if (activeOverlay != null) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 closeOverlay();
@@ -218,11 +222,14 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
             return true;
         }
 
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(input);
     }
 
     @Override
-    public boolean charTyped(char chr, int modifiers) {
+    public boolean charTyped(net.minecraft.client.input.CharInput input) {
+        char chr = (char) input.codepoint();
+        int modifiers = input.modifiers();
+
         if (activeOverlay != null) {
             return activeOverlay.charTyped(chr, modifiers);
         }
@@ -231,11 +238,15 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
             return true;
         }
 
-        return super.charTyped(chr, modifiers);
+        return super.charTyped(input);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean bl) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
+
         if (activeOverlay != null) {
             return activeOverlay.mouseClicked(mouseX, mouseY, button);
         }
@@ -253,7 +264,7 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
             if (child instanceof ClickableWidget widget && (!widget.visible || !widget.active)) {
                 continue;
             }
-            if (child.mouseClicked(mouseX, mouseY, button)) {
+            if (child.mouseClicked(click, bl)) {
                 this.setFocused(child);
                 if (button == 0) {
                     this.setDragging(true);
@@ -291,7 +302,11 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+    public boolean mouseDragged(net.minecraft.client.gui.Click click, double deltaX, double deltaY) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
+
         if (activeOverlay != null && activeOverlay.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)) {
             return true;
         }
@@ -300,18 +315,18 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
             return true;
         }
 
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        return super.mouseDragged(click, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(net.minecraft.client.gui.Click click) {
         if (activeOverlay != null) {
             activeOverlay.mouseReleased();
         }
         for (SettingsTab tab : tabs) {
             tab.mouseReleased();
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(click);
     }
 
     // --- отрисовка ---

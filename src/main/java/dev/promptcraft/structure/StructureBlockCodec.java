@@ -21,7 +21,7 @@ public final class StructureBlockCodec {
         Identifier id = Identifier.tryParse(blockId);
         if (id == null) return Optional.empty();
 
-        Optional<Block> blockOpt = Registries.BLOCK.getOrEmpty(id);
+        Optional<Block> blockOpt = Registries.BLOCK.getOptionalValue(id);
         if (blockOpt.isEmpty()) return Optional.empty();
 
         BlockState state = blockOpt.get().getDefaultState();

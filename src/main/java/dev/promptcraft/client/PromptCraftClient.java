@@ -15,12 +15,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -40,25 +41,27 @@ public class PromptCraftClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        KeyBinding.Category category = KeyBinding.Category.create(Identifier.of(dev.promptcraft.PromptCraftMod.MOD_ID, "main"));
+
         KeyBinding openMenuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.promptcraft.open_menu",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_K,
-                "category.promptcraft"
+                category
         ));
 
         rotateGhostKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.promptcraft.rotate_ghost",
                 InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_R,
-                "category.promptcraft"
+                category
         ));
 
         confirmPlacementKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.promptcraft.confirm_placement",
                 InputUtil.Type.MOUSE,
                 GLFW.GLFW_MOUSE_BUTTON_LEFT,
-                "category.promptcraft"
+                category
         ));
 
         // При заходе в мир подхватываем язык интерфейса Minecraft: русский -> ru,
@@ -227,7 +230,7 @@ public class PromptCraftClient implements ClientModInitializer {
             drawContext.drawTextWithShadow(client.textRenderer, pct, barX + barWidth + 6, barY + 1, 0xFFFFFFFF);
         });
 
-        WorldRenderEvents.LAST.register(context -> {
+        WorldRenderEvents.END_MAIN.register(context -> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null) return;
 
@@ -249,7 +252,7 @@ public class PromptCraftClient implements ClientModInitializer {
                 if (hit != null && hit.getType() == HitResult.Type.BLOCK) {
                     pos2 = ((BlockHitResult) hit).getBlockPos();
                 } else {
-                    float tickDelta = context.tickCounter().getTickDelta(false);
+                    float tickDelta = client.getRenderTickCounter().getTickProgress(false);
                     Vec3d eyePos = client.player.getCameraPosVec(tickDelta);
                     Vec3d lookVec = client.player.getRotationVec(tickDelta);
                     pos2 = BlockPos.ofFloored(eyePos.add(lookVec.multiply(5.0D)));
@@ -265,9 +268,9 @@ public class PromptCraftClient implements ClientModInitializer {
             float g = ((color >> 8) & 0xFF) / 255f;
             float b = (color & 0xFF) / 255f;
 
-            Vec3d cameraPos = context.camera().getPos();
-            Matrix4f matrix = context.matrixStack().peek().getPositionMatrix();
-            Tessellator tessellator = Tessellator.getInstance();
+            Vec3d cameraPos = client.gameRenderer.getCamera().getPos();
+            net.minecraft.client.util.math.MatrixStack matrices = context.matrices();
+            VertexConsumerProvider consumers = context.consumers();
 
             int minX = Math.min(pos1.getX(), pos2.getX());
             int minY = Math.min(pos1.getY(), pos2.getY());
@@ -297,44 +300,16 @@ public class PromptCraftClient implements ClientModInitializer {
                     maxZ + outlineEpsilon
             ).offset(-cameraPos.x, -cameraPos.y, -cameraPos.z);
 
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-            RenderSystem.disableCull();
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthMask(false);
-            RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
             PromptCraftConfig config = PromptCraftConfigManager.get();
-
             float fillOpacity = Math.max(0.0f, Math.min(1.0f, config.selectionFillOpacity));
 
             if (fillOpacity > 0.0f) {
-                BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-                drawFilledBox(matrix, buffer, fillBox, r, g, b, fillOpacity);
-                BufferRenderer.drawWithGlobalProgram(buffer.end());
+                VertexConsumer fillConsumer = consumers.getBuffer(RenderLayer.getDebugFilledBox());
+                VertexRendering.drawFilledBox(matrices, fillConsumer, fillBox.minX, fillBox.minY, fillBox.minZ, fillBox.maxX, fillBox.maxY, fillBox.maxZ, r, g, b, fillOpacity);
             }
 
-            boolean outlineThroughBlocks = config.selectionOutlineThroughBlocks;
-
-            if (outlineThroughBlocks) {
-                RenderSystem.disableDepthTest();
-            } else {
-                RenderSystem.enableDepthTest();
-            }
-
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-            float outlineThickness = config.thickSelectionOutline ? 0.035f : 0.008f;
-            drawThickOutline(matrix, buffer, outlineBox, outlineThickness, r, g, b, 1.0f);
-
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
-
-            RenderSystem.enableDepthTest();
-
-            RenderSystem.depthMask(true);
-            RenderSystem.enableCull();
-            RenderSystem.disableBlend();
-            RenderSystem.enableDepthTest();
+            VertexConsumer lineConsumer = consumers.getBuffer(RenderLayer.getLines());
+            VertexRendering.drawBox(matrices.peek(), lineConsumer, outlineBox, r, g, b, 1.0f);
         });
     }
 
@@ -356,39 +331,5 @@ public class PromptCraftClient implements ClientModInitializer {
 
         previous[0] = org.lwjgl.glfw.GLFW.glfwSetScrollCallback(handle, ours);
         scrollHookInstalled = true;
-    }
-
-    private void drawFilledBox(Matrix4f matrix, BufferBuilder buffer, Box box, float r, float g, float b, float a) {
-        float minX = (float) box.minX; float minY = (float) box.minY; float minZ = (float) box.minZ;
-        float maxX = (float) box.maxX; float maxY = (float) box.maxY; float maxZ = (float) box.maxZ;
-        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a);
-        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a);
-        buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a);
-        buffer.vertex(matrix, minX, minY, maxZ).color(r, g, b, a); buffer.vertex(matrix, minX, maxY, maxZ).color(r, g, b, a);
-        buffer.vertex(matrix, minX, maxY, minZ).color(r, g, b, a); buffer.vertex(matrix, minX, minY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, minY, minZ).color(r, g, b, a); buffer.vertex(matrix, maxX, maxY, minZ).color(r, g, b, a);
-        buffer.vertex(matrix, maxX, maxY, maxZ).color(r, g, b, a); buffer.vertex(matrix, maxX, minY, maxZ).color(r, g, b, a);
-    }
-
-    private void drawThickOutline(Matrix4f matrix, BufferBuilder buffer, Box box, float t, float r, float g, float b, float a) {
-        float x1 = (float)box.minX, y1 = (float)box.minY, z1 = (float)box.minZ;
-        float x2 = (float)box.maxX, y2 = (float)box.maxY, z2 = (float)box.maxZ;
-        drawFilledBox(matrix, buffer, new Box(x1-t, y1-t, z1-t, x2+t, y1+t, z1+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y1-t, z2-t, x2+t, y1+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y1-t, z1-t, x1+t, y1+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x2-t, y1-t, z1-t, x2+t, y1+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y2-t, z1-t, x2+t, y2+t, z1+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y2-t, z2-t, x2+t, y2+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y2-t, z1-t, x1+t, y2+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x2-t, y2-t, z1-t, x2+t, y2+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y1-t, z1-t, x1+t, y2+t, z1+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x2-t, y1-t, z1-t, x2+t, y2+t, z1+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x1-t, y1-t, z2-t, x1+t, y2+t, z2+t), r, g, b, a);
-        drawFilledBox(matrix, buffer, new Box(x2-t, y1-t, z2-t, x2+t, y2+t, z2+t), r, g, b, a);
     }
 }

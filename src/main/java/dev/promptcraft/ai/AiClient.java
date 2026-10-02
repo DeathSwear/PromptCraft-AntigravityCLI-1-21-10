@@ -237,8 +237,8 @@ public class AiClient {
                             "AI request failed after several attempts. Please try again.",
                             "Запрос к ИИ не удался после нескольких попыток. Попробуйте ещё раз.");
                     notifyPlayer(player, msg, msg, Formatting.RED);
-                    if (player.getServer() != null) {
-                        player.getServer().execute(() -> PromptCraftNetworking.sendAiStreamEvent(player, "error", msg));
+                    if (player.getEntityWorld().getServer() != null) {
+                        player.getEntityWorld().getServer().execute(() -> PromptCraftNetworking.sendAiStreamEvent(player, "error", msg));
                     }
                 }
                 return CompletableFuture.completedFuture(null);
@@ -401,8 +401,8 @@ public class AiClient {
                             "AI request failed after several attempts. Please try again.",
                             "Запрос к ИИ не удался после нескольких попыток. Попробуйте ещё раз.");
                     notifyPlayer(player, msg, msg, Formatting.RED);
-                    if (player.getServer() != null) {
-                        player.getServer().execute(() -> PromptCraftNetworking.sendAiStreamEvent(player, "error", msg));
+                    if (player.getEntityWorld().getServer() != null) {
+                        player.getEntityWorld().getServer().execute(() -> PromptCraftNetworking.sendAiStreamEvent(player, "error", msg));
                     }
                 }
                 return CompletableFuture.completedFuture(null);
@@ -447,8 +447,8 @@ public class AiClient {
     }
 
     private static void notifyPlayer(ServerPlayerEntity player, String en, String ru, Formatting color) {
-        if (player.getServer() != null) {
-            player.getServer().execute(() ->
+        if (player.getEntityWorld().getServer() != null) {
+            player.getEntityWorld().getServer().execute(() ->
                     player.sendMessage(Text.literal(PromptCraftLang.t(en, ru)).formatted(color), false));
         }
     }

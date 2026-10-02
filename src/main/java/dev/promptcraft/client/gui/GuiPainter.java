@@ -47,7 +47,7 @@ public final class GuiPainter {
         context.fill(iconX, iconY + 17, iconX + 18, iconY + 18, 0xFF4A4A4A);
         context.fill(iconX + 17, iconY, iconX + 18, iconY + 18, 0xFF4A4A4A);
 
-        context.drawTexture(icon, iconX + 1, iconY + 1, 0, 0, 16, 16, 16, 16);
+        context.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, icon, iconX + 1, iconY + 1, 0, 0, 16, 16, 16, 16);
     }
 
     /** Пункт бокового меню табов. */

@@ -51,7 +51,7 @@ public class BuildTask implements Task {
 
     public BuildTask(ServerPlayerEntity player, BlockPos origin, PromptCraftStructure structure, GenerationSession session) {
         this.player = player;
-        this.world = (ServerWorld) player.getWorld();
+        this.world = player.getEntityWorld();
         this.origin = origin;
         this.structure = structure;
         this.session = session;

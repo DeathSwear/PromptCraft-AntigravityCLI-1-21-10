@@ -29,7 +29,7 @@ public class HistoryManager {
         if (fromStack == null || fromStack.isEmpty()) return false;
 
         List<BlockSnapshot> snapshots = fromStack.pop();
-        ServerWorld world = (ServerWorld) player.getWorld();
+        ServerWorld world = player.getEntityWorld();
         List<BlockSnapshot> oppositeSnapshots = new ArrayList<>();
 
         for (BlockSnapshot snap : snapshots) {

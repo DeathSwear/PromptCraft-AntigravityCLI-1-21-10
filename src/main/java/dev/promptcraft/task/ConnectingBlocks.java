@@ -44,7 +44,7 @@ public final class ConnectingBlocks {
         for (Direction dir : Direction.values()) {
             BlockPos neighborPos = pos.offset(dir);
             BlockState neighborState = world.getBlockState(neighborPos);
-            updated = updated.getStateForNeighborUpdate(dir, neighborState, world, pos, neighborPos);
+            updated = updated.getStateForNeighborUpdate(world, world, pos, dir, neighborPos, neighborState, world.getRandom());
         }
 
         if (updated != state) {

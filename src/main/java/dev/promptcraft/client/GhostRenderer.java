@@ -1,23 +1,19 @@
 package dev.promptcraft.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.VertexRendering;
 import net.minecraft.client.render.block.BlockRenderManager;
-import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.random.Random;
-import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +33,7 @@ public final class GhostRenderer {
         if (blocks.isEmpty()) return;
 
         BlockPos anchor = GhostPreviewState.getCurrentAnchor();
-        Vec3d cam = context.camera().getPos();
+        Vec3d cam = client.gameRenderer.getCamera().getPos();
 
         // Только видимая оболочка: воздух и полностью замурованные блоки не рисуем.
         List<Map.Entry<BlockPos, BlockState>> visible = new ArrayList<>();
@@ -48,27 +44,20 @@ public final class GhostRenderer {
         }
         if (visible.isEmpty()) return;
 
+        MatrixStack matrices = context.matrices();
+        VertexConsumerProvider consumers = context.consumers();
+
         if (visible.size() > MAX_DETAILED_BLOCKS) {
-            renderBox(context, blocks, anchor, cam, 0.35f, 0.85f, 1.0f, 0.30f);
+            renderBox(matrices, consumers, blocks, anchor, cam, 0.35f, 0.85f, 1.0f, 0.30f);
             return;
         }
 
         BlockRenderManager brm = client.getBlockRenderManager();
-        VertexConsumerProvider.Immediate immediate = client.getBufferBuilders().getEntityVertexConsumers();
         int light = LightmapTextureManager.pack(15, 15);
-        MatrixStack matrices = context.matrixStack();
-        Random random = Random.create();
-
-        // Непрозрачно, с отсечением задних граней и записью глубины -> настоящий
-        // макет из текстур блоков. Никакого наложения полупрозрачных слоёв.
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
 
         for (Map.Entry<BlockPos, BlockState> entry : visible) {
             BlockState state = entry.getValue();
             BlockPos local = entry.getKey();
-            BakedModel model = brm.getModel(state);
 
             matrices.push();
             matrices.translate(
@@ -84,18 +73,12 @@ public final class GhostRenderer {
             matrices.scale(s, s, s);
             matrices.translate(-0.5, -0.5, -0.5);
 
-            RenderLayer layer = RenderLayers.getEntityBlockLayer(state, false);
-            VertexConsumer vc = immediate.getBuffer(layer);
-            brm.getModelRenderer().render(
-                matrices.peek(), vc, state, model,
-                1.0f, 1.0f, 1.0f, light, OverlayTexture.DEFAULT_UV
-            );
+            brm.renderBlockAsEntity(state, matrices, consumers, light, OverlayTexture.DEFAULT_UV);
             matrices.pop();
         }
-        immediate.draw();
 
         // Тонкий цветной габарит поверх - чтобы читалось как "предпросмотр".
-        renderBox(context, blocks, anchor, cam, 0.35f, 0.85f, 1.0f, 0.10f);
+        renderBox(matrices, consumers, blocks, anchor, cam, 0.35f, 0.85f, 1.0f, 0.10f);
     }
 
     private static boolean isEnclosed(BlockPos p, Map<BlockPos, BlockState> b) {
@@ -109,7 +92,7 @@ public final class GhostRenderer {
         return s != null && !s.isAir();
     }
 
-    private static void renderBox(WorldRenderContext context, Map<BlockPos, BlockState> blocks,
+    private static void renderBox(MatrixStack matrices, VertexConsumerProvider consumers, Map<BlockPos, BlockState> blocks,
                                   BlockPos anchor, Vec3d cam, float r, float g, float bl, float a) {
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
@@ -123,35 +106,10 @@ public final class GhostRenderer {
             anchor.getX() + maxX + 1, anchor.getY() + maxY + 1, anchor.getZ() + maxZ + 1
         ).offset(-cam.x, -cam.y, -cam.z).expand(0.02);
 
-        Matrix4f m = context.matrixStack().peek().getPositionMatrix();
-        var tess = net.minecraft.client.render.Tessellator.getInstance();
+        VertexConsumer fillConsumer = consumers.getBuffer(RenderLayer.getDebugFilledBox());
+        VertexRendering.drawFilledBox(matrices, fillConsumer, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, r, g, bl, a);
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableCull();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShader(net.minecraft.client.render.GameRenderer::getPositionColorProgram);
-
-        var buf = tess.begin(net.minecraft.client.render.VertexFormat.DrawMode.QUADS,
-                  net.minecraft.client.render.VertexFormats.POSITION_COLOR);
-        float x1 = (float) box.minX, y1 = (float) box.minY, z1 = (float) box.minZ;
-        float x2 = (float) box.maxX, y2 = (float) box.maxY, z2 = (float) box.maxZ;
-        buf.vertex(m, x1, y1, z1).color(r, g, bl, a); buf.vertex(m, x2, y1, z1).color(r, g, bl, a);
-        buf.vertex(m, x2, y1, z2).color(r, g, bl, a); buf.vertex(m, x1, y1, z2).color(r, g, bl, a);
-        buf.vertex(m, x1, y2, z2).color(r, g, bl, a); buf.vertex(m, x2, y2, z2).color(r, g, bl, a);
-        buf.vertex(m, x2, y2, z1).color(r, g, bl, a); buf.vertex(m, x1, y2, z1).color(r, g, bl, a);
-        buf.vertex(m, x1, y1, z1).color(r, g, bl, a); buf.vertex(m, x1, y2, z1).color(r, g, bl, a);
-        buf.vertex(m, x2, y2, z1).color(r, g, bl, a); buf.vertex(m, x2, y1, z1).color(r, g, bl, a);
-        buf.vertex(m, x2, y1, z2).color(r, g, bl, a); buf.vertex(m, x2, y2, z2).color(r, g, bl, a);
-        buf.vertex(m, x1, y2, z2).color(r, g, bl, a); buf.vertex(m, x1, y1, z2).color(r, g, bl, a);
-        buf.vertex(m, x1, y1, z2).color(r, g, bl, a); buf.vertex(m, x1, y2, z2).color(r, g, bl, a);
-        buf.vertex(m, x1, y2, z1).color(r, g, bl, a); buf.vertex(m, x1, y1, z1).color(r, g, bl, a);
-        buf.vertex(m, x2, y1, z1).color(r, g, bl, a); buf.vertex(m, x2, y2, z1).color(r, g, bl, a);
-        buf.vertex(m, x2, y2, z2).color(r, g, bl, a); buf.vertex(m, x2, y1, z2).color(r, g, bl, a);
-        net.minecraft.client.render.BufferRenderer.drawWithGlobalProgram(buf.end());
-
-        RenderSystem.depthMask(true);
-        RenderSystem.enableCull();
-        RenderSystem.disableBlend();
+        VertexConsumer lineConsumer = consumers.getBuffer(RenderLayer.getLines());
+        VertexRendering.drawBox(matrices.peek(), lineConsumer, box, r, g, bl, 1.0f);
     }
 }

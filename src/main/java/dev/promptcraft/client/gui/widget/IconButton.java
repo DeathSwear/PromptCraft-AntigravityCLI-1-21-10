@@ -32,13 +32,13 @@ public class IconButton extends ButtonWidget {
         int offsetY = (this.height - displaySize) / 2;
 
         if (iconSize == 16) {
-            context.drawTexture(texture, this.getX() + offsetX, this.getY() + offsetY, 0, 0, 16, 16, 16, 16);
+            context.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, texture, this.getX() + offsetX, this.getY() + offsetY, 0, 0, 16, 16, 16, 16);
         } else {
-            context.getMatrices().push();
-            context.getMatrices().translate(this.getX() + offsetX, this.getY() + offsetY, 0);
-            context.getMatrices().scale(0.5f, 0.5f, 1.0f);
-            context.drawTexture(texture, 0, 0, 0, 0, 32, 32, 32, 32);
-            context.getMatrices().pop();
+            context.getMatrices().pushMatrix();
+            context.getMatrices().translate((float) (this.getX() + offsetX), (float) (this.getY() + offsetY));
+            context.getMatrices().scale(0.5f, 0.5f);
+            context.drawTexture(net.minecraft.client.gl.RenderPipelines.GUI_TEXTURED, texture, 0, 0, 0, 0, 32, 32, 32, 32);
+            context.getMatrices().popMatrix();
         }
     }
 }

@@ -37,8 +37,10 @@ public final class CreateTab extends AbstractSettingsTab {
         int x = layout.contentX() - 5;
         int y = layout.createY();
 
-        promptField = add(new EditBoxWidget(ctx.textRenderer(), x, y, 190, 95,
-                Text.literal(t("Prompt", "Запрос")), Text.literal("")));
+        promptField = add(EditBoxWidget.builder()
+                .x(x).y(y)
+                .placeholder(Text.literal(""))
+                .build(ctx.textRenderer(), 190, 95, Text.literal(t("Prompt", "Запрос"))));
         promptField.setText(PromptDraftState.get());
 
         generateButton = add(new FlatButton(ctx, x, y + 100, 90, 20,
@@ -141,7 +143,7 @@ public final class CreateTab extends AbstractSettingsTab {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (promptField != null && promptField.isFocused()) {
-            return promptField.keyPressed(keyCode, scanCode, modifiers);
+            return promptField.keyPressed(new net.minecraft.client.input.KeyInput(keyCode, scanCode, modifiers));
         }
         return false;
     }
@@ -149,7 +151,7 @@ public final class CreateTab extends AbstractSettingsTab {
     @Override
     public boolean charTyped(char chr, int modifiers) {
         if (promptField != null && promptField.isFocused()) {
-            return promptField.charTyped(chr, modifiers);
+            return promptField.charTyped(new net.minecraft.client.input.CharInput(chr, modifiers));
         }
         return false;
     }

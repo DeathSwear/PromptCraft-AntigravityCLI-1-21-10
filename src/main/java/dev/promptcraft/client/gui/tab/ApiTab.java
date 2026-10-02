@@ -237,20 +237,20 @@ public final class ApiTab extends AbstractSettingsTab {
         if (apiKeyField == null || !apiKeyField.isFocused()) return false;
 
         // Ctrl+A: super не умеет выделять всё в кастомном password-поле.
-        if (net.minecraft.client.gui.screen.Screen.hasControlDown()
-                && keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_A) {
+        boolean ctrl = (modifiers & org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL) != 0;
+        if (ctrl && keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_A) {
             apiKeyField.setSelectionStart(0);
             apiKeyField.setSelectionEnd(apiKeyField.getText().length());
             return true;
         }
 
-        return apiKeyField.keyPressed(keyCode, scanCode, modifiers);
+        return apiKeyField.keyPressed(new net.minecraft.client.input.KeyInput(keyCode, scanCode, modifiers));
     }
 
     @Override
     public boolean charTyped(char chr, int modifiers) {
         if (apiKeyField != null && apiKeyField.isFocused()) {
-            return apiKeyField.charTyped(chr, modifiers);
+            return apiKeyField.charTyped(new net.minecraft.client.input.CharInput(chr, modifiers));
         }
         return false;
     }

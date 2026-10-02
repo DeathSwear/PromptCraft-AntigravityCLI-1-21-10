@@ -242,8 +242,8 @@ public class PromptCraftNetworking {
                     .thenAccept(structure -> {
                         if (session.isCancelled()) return;
 
-                        if (structure != null && player.getServer() != null) {
-                            player.getServer().execute(() -> {
+                        if (structure != null && player.getEntityWorld().getServer() != null) {
+                            player.getEntityWorld().getServer().execute(() -> {
                                 if (session.isCancelled()) return;
                                 player.sendMessage(Text.literal(PromptCraftLang.t("AI response received! Building...", "Ответ ИИ получен! Строим...")).formatted(Formatting.GREEN), false);
                                 dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, prompt.getSelectionMin(), structure, session));
@@ -272,8 +272,8 @@ public class PromptCraftNetworking {
         ).thenAccept(structure -> {
             if (session.isCancelled()) return;
 
-            if (structure != null && structure.operations != null && !structure.operations.isEmpty() && player.getServer() != null) {
-                player.getServer().execute(() -> {
+            if (structure != null && structure.operations != null && !structure.operations.isEmpty() && player.getEntityWorld().getServer() != null) {
+                player.getEntityWorld().getServer().execute(() -> {
                     if (session.isCancelled()) return;
 
                     session.setPendingStructure(structure);
@@ -284,8 +284,8 @@ public class PromptCraftNetworking {
                     ServerPlayNetworking.send(player, new PromptCraftPayloads.StartFreePlacementPayload(new com.google.gson.Gson().toJson(structure)));
                 });
             } else {
-                if (player.getServer() != null) {
-                    player.getServer().execute(() -> {
+                if (player.getEntityWorld().getServer() != null) {
+                    player.getEntityWorld().getServer().execute(() -> {
                         if (!session.isCancelled()) {
                             player.sendMessage(Text.literal(PromptCraftLang.t("AI returned an empty structure.", "ИИ вернул пустую структуру.")).formatted(Formatting.RED), false);
                         }

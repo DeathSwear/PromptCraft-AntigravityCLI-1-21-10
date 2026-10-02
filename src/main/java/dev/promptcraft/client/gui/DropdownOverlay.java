@@ -69,8 +69,7 @@ public final class DropdownOverlay implements Overlay {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.getMatrices().push();
-        context.getMatrices().translate(0.0f, 0.0f, 400.0f);
+        context.getMatrices().pushMatrix();
 
         int ox = originX();
         int oy = originY();
@@ -98,7 +97,7 @@ public final class DropdownOverlay implements Overlay {
             }
         }
 
-        context.getMatrices().pop();
+        context.getMatrices().popMatrix();
     }
 
     @Override

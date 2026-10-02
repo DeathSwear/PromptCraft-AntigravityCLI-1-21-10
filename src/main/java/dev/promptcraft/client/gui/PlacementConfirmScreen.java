@@ -49,19 +49,21 @@ public class PlacementConfirmScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) { cancel(); return true; }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
+        if (input.key() == GLFW.GLFW_KEY_ESCAPE) { cancel(); return true; }
+        return super.keyPressed(input);
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean bl) {
         int ox = (this.width - OVERLAY_W) / 2;
         int oy = (this.height - OVERLAY_H) / 2;
 
         // Крестик закрытия = отмена.
         int closeX = ox + OVERLAY_W - 22;
         int closeY = oy + 5;
+        double mouseX = click.x();
+        double mouseY = click.y();
         if (mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 14) {
             cancel();
             return true;
@@ -72,7 +74,7 @@ public class PlacementConfirmScreen extends Screen {
         if (inRect(mouseX, mouseY, yes)) { confirm(); return true; }
         if (inRect(mouseX, mouseY, no)) { cancel(); return true; }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, bl);
     }
 
     private int[] yesRect(int ox, int oy) {

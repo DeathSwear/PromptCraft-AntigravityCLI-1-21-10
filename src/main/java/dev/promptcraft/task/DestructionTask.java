@@ -29,7 +29,7 @@ public class DestructionTask implements Task {
 
     public DestructionTask(ServerPlayerEntity player, BlockPos min, BlockPos max, GenerationSession session, Runnable onComplete) {
         this.player = player;
-        this.world = (ServerWorld) player.getWorld();
+        this.world = player.getEntityWorld();
         this.min = min;
         this.max = max;
         this.session = session;
@@ -93,7 +93,7 @@ public class DestructionTask implements Task {
             world.setBlockState(snap.pos(), snap.state(), BlockPlacementUtil.flagsFor(snap.state()));
             if (snap.nbt() != null) {
                 BlockEntity be = world.getBlockEntity(snap.pos());
-                if (be != null) be.read(snap.nbt(), world.getRegistryManager());
+                if (be != null) be.read(net.minecraft.storage.NbtReadView.create(net.minecraft.util.ErrorReporter.EMPTY, world.getRegistryManager(), snap.nbt()));
             }
         }
         if (session != null) session.markDestructionComplete();

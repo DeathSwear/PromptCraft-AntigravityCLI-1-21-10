@@ -74,8 +74,7 @@ public final class ModelPickerOverlay implements Overlay {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        context.getMatrices().push();
-        context.getMatrices().translate(0.0f, 0.0f, 400.0f);
+        context.getMatrices().pushMatrix();
 
         int ox = originX();
         int oy = originY();
@@ -110,7 +109,7 @@ public final class ModelPickerOverlay implements Overlay {
             context.fill(ox + OVERLAY_W - 10, scrollBarY, ox + OVERLAY_W - 5, scrollBarY + 20, themeColorInt);
         }
 
-        context.getMatrices().pop();
+        context.getMatrices().popMatrix();
     }
 
     @Override
@@ -118,7 +117,7 @@ public final class ModelPickerOverlay implements Overlay {
         int ox = originX();
         int oy = originY();
 
-        if (searchField.mouseClicked(mouseX, mouseY, button)) {
+        if (searchField.mouseClicked(new net.minecraft.client.gui.Click(mouseX, mouseY, new net.minecraft.client.input.MouseInput(button, 0)), false)) {
             return true;
         }
 
@@ -157,13 +156,13 @@ public final class ModelPickerOverlay implements Overlay {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        searchField.keyPressed(keyCode, scanCode, modifiers);
+        searchField.keyPressed(new net.minecraft.client.input.KeyInput(keyCode, scanCode, modifiers));
         return true;
     }
 
     @Override
     public boolean charTyped(char chr, int modifiers) {
-        searchField.charTyped(chr, modifiers);
+        searchField.charTyped(new net.minecraft.client.input.CharInput(chr, modifiers));
         return true;
     }
 
