@@ -4,7 +4,7 @@
 
 **ИИ-ассистент строительства для Minecraft (Fabric)**
 
-🌐 Язык: **Русский** | [English](README_EN.md)
+🌐 Язык: **Русский** | [English](README_EN.md) | [**Состояние проекта и память разработки (PROJECT_STATE.md)**](PROJECT_STATE.md)
 
 </div>
 
