@@ -20,8 +20,6 @@ public final class StructureRotationUtil {
         }
 
         PromptCraftStructure.Bounds bounds = original.computeBounds();
-        int width = bounds.width();
-        int depth = bounds.depth();
 
         BlockRotation rotation = switch (normalizedSteps) {
             case 1 -> BlockRotation.CLOCKWISE_90;
@@ -38,12 +36,12 @@ public final class StructureRotationUtil {
             newOp.block = rotateBlockString(op.block, rotation);
 
             if (op.pos != null && op.pos.length == 3) {
-                newOp.pos = rotateCoord(op.pos, normalizedSteps, width, depth);
+                newOp.pos = rotateCoord(op.pos, normalizedSteps, bounds);
             }
 
             if (op.from != null && op.to != null && op.from.length == 3 && op.to.length == 3) {
-                int[] a = rotateCoord(op.from, normalizedSteps, width, depth);
-                int[] b = rotateCoord(op.to, normalizedSteps, width, depth);
+                int[] a = rotateCoord(op.from, normalizedSteps, bounds);
+                int[] b = rotateCoord(op.to, normalizedSteps, bounds);
                 newOp.from = new int[]{Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])};
                 newOp.to = new int[]{Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])};
             }
@@ -54,17 +52,28 @@ public final class StructureRotationUtil {
         return result;
     }
 
-    private static int[] rotateCoord(int[] xyz, int steps, int width, int depth) {
-        int x = xyz[0];
+    private static int[] rotateCoord(int[] xyz, int steps, PromptCraftStructure.Bounds bounds) {
+        int relX = xyz[0] - bounds.minX();
         int y = xyz[1];
-        int z = xyz[2];
+        int relZ = xyz[2] - bounds.minZ();
+        int width = bounds.width();
+        int depth = bounds.depth();
 
-        return switch (steps) {
-            case 1 -> new int[]{(depth - 1) - z, y, x};
-            case 2 -> new int[]{(width - 1) - x, y, (depth - 1) - z};
-            case 3 -> new int[]{z, y, (width - 1) - x};
-            default -> new int[]{x, y, z};
+        int rotX = switch (steps) {
+            case 1 -> (depth - 1) - relZ;
+            case 2 -> (width - 1) - relX;
+            case 3 -> relZ;
+            default -> relX;
         };
+
+        int rotZ = switch (steps) {
+            case 1 -> relX;
+            case 2 -> (depth - 1) - relZ;
+            case 3 -> (width - 1) - relX;
+            default -> relZ;
+        };
+
+        return new int[]{bounds.minX() + rotX, y, bounds.minZ() + rotZ};
     }
 
     private static String rotateBlockString(String encoded, BlockRotation rotation) {

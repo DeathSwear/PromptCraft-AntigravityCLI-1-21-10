@@ -24,13 +24,19 @@ public class RestoreTask implements Task {
 
     @Override
     public boolean tick() {
-        int blocksPerTick = 50; // Восстанавливаем по 50 блоков за тик для красивой анимации
+        int blocksPerTick = 150;
         int processed = 0;
+        int checked = 0;
 
-        while (processed < blocksPerTick && index < snapshots.size()) {
+        while (processed < blocksPerTick && checked < 5000 && index < snapshots.size()) {
             BlockSnapshot snap = snapshots.get(index++);
+            checked++;
             BlockPos pos = snap.pos();
             BlockState state = snap.state();
+
+            if (world.getBlockState(pos).equals(state)) {
+                continue;
+            }
 
             world.setBlockState(pos, state, BlockPlacementUtil.flagsFor(state));
             if (snap.nbt() != null) {

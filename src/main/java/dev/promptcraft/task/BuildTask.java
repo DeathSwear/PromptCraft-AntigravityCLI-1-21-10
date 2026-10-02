@@ -4,9 +4,12 @@ import dev.promptcraft.config.PromptCraftLang;
 import dev.promptcraft.network.PromptCraftNetworking;
 import dev.promptcraft.session.GenerationSession;
 import dev.promptcraft.session.PromptSessionManager;
+import dev.promptcraft.structure.BlockSnapshot;
+import dev.promptcraft.structure.HistoryManager;
 import dev.promptcraft.structure.PromptCraftStructure;
 import dev.promptcraft.structure.StructureBlockCodec;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
@@ -14,6 +17,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -27,6 +31,8 @@ public class BuildTask implements Task {
     private final BlockPos origin;
     private final PromptCraftStructure structure;
     private final GenerationSession session;
+    private final List<BlockSnapshot> undoSnapshots;
+    private final Set<BlockPos> recordedPositions = new HashSet<>();
 
     private int opIndex = 0;
 
@@ -50,11 +56,19 @@ public class BuildTask implements Task {
     private int lastSentPercent = -1;
 
     public BuildTask(ServerPlayerEntity player, BlockPos origin, PromptCraftStructure structure, GenerationSession session) {
+        this(player, origin, structure, session, null);
+    }
+
+    public BuildTask(ServerPlayerEntity player, BlockPos origin, PromptCraftStructure structure, GenerationSession session, List<BlockSnapshot> priorSnapshots) {
         this.player = player;
         this.world = player.getEntityWorld();
         this.origin = origin;
         this.structure = structure;
         this.session = session;
+        this.undoSnapshots = priorSnapshots != null ? priorSnapshots : new ArrayList<>();
+        for (BlockSnapshot s : this.undoSnapshots) {
+            recordedPositions.add(s.pos());
+        }
         this.totalCells = estimateTotalCells(structure);
         if (session != null) session.markBuildStarted();
         PromptCraftNetworking.sendBuildProgress(player, 0, true);
@@ -77,6 +91,14 @@ public class BuildTask implements Task {
         return total;
     }
 
+    private void recordUndo(BlockPos pos) {
+        if (recordedPositions.add(pos)) {
+            BlockState priorState = world.getBlockState(pos);
+            BlockEntity be = world.getBlockEntity(pos);
+            undoSnapshots.add(new BlockSnapshot(pos, priorState, be != null ? be.createNbt(world.getRegistryManager()) : null));
+        }
+    }
+
     private void recordIfConnecting(BlockPos worldPos, BlockState state) {
         if (ConnectingBlocks.needsConnectionUpdate(state)) {
             connectingPositions.add(worldPos);
@@ -88,6 +110,9 @@ public class BuildTask implements Task {
         if (session != null && session.isCancelled()) {
             session.markBuildFinished();
             PromptCraftNetworking.sendBuildProgress(player, 0, false);
+            if (!undoSnapshots.isEmpty()) {
+                dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.RestoreTask(player, undoSnapshots, null));
+            }
             return true;
         }
 
@@ -130,6 +155,7 @@ public class BuildTask implements Task {
 
                 if ("place".equals(op.type) && op.pos != null && op.pos.length == 3) {
                     BlockPos wp = origin.add(op.pos[0], op.pos[1], op.pos[2]);
+                    recordUndo(wp);
                     world.setBlockState(wp, state, flags);
                     recordIfConnecting(wp, state);
                     budget--;
@@ -164,6 +190,7 @@ public class BuildTask implements Task {
 
                 if (!skip) {
                     BlockPos wp = origin.add(curX, curY, curZ);
+                    recordUndo(wp);
                     world.setBlockState(wp, opState, opFlags);
                     if (connecting) connectingPositions.add(wp);
                 }
@@ -205,6 +232,9 @@ public class BuildTask implements Task {
         player.sendMessage(Text.literal(PromptCraftLang.t("Building complete!", "Постройка завершена!")).formatted(Formatting.GREEN), false);
         if (session != null) session.markBuildFinished();
         PromptSessionManager.clearGeneration(player);
+        if (!undoSnapshots.isEmpty()) {
+            HistoryManager.pushUndo(player, undoSnapshots);
+        }
         PromptCraftNetworking.sendBuildProgress(player, 100, false);
         PromptCraftNetworking.sendAiStreamEvent(player, "done", "");
         return true;

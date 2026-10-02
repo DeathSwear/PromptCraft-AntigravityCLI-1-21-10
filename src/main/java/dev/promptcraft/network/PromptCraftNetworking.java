@@ -193,10 +193,10 @@ public class PromptCraftNetworking {
 
                 player.sendMessage(Text.literal(PromptCraftLang.t("Placing structure...", "Размещение структуры...")).formatted(Formatting.YELLOW), false);
 
-                dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.DestructionTask(player, min, max, session, () -> {
+                dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.DestructionTask(player, min, max, session, (destroyedSnapshots) -> {
                     if (session.isCancelled()) return;
                     player.sendMessage(Text.literal(PromptCraftLang.t("Area cleared. Building...", "Область очищена. Строим...")).formatted(Formatting.GREEN), false);
-                    dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, anchor, rotated, session));
+                    dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, anchor, rotated, session, destroyedSnapshots));
                 }));
             });
         });
@@ -234,7 +234,7 @@ public class PromptCraftNetworking {
         GenerationSession session = PromptSessionManager.startGeneration(player);
 
         player.sendMessage(Text.literal(PromptCraftLang.t("Preparing area...", "Подготовка области...")).formatted(Formatting.YELLOW), false);
-        dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.DestructionTask(player, prompt.getSelectionMin(), prompt.getSelectionMax(), session, () -> {
+        dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.DestructionTask(player, prompt.getSelectionMin(), prompt.getSelectionMax(), session, (destroyedSnapshots) -> {
             if (session.isCancelled()) return;
 
             player.sendMessage(Text.literal(PromptCraftLang.t("Area cleared. Contacting AI...", "Область очищена. Связь с ИИ...")).formatted(Formatting.AQUA), false);
@@ -246,9 +246,14 @@ public class PromptCraftNetworking {
                             player.getEntityWorld().getServer().execute(() -> {
                                 if (session.isCancelled()) return;
                                 player.sendMessage(Text.literal(PromptCraftLang.t("AI response received! Building...", "Ответ ИИ получен! Строим...")).formatted(Formatting.GREEN), false);
-                                dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, prompt.getSelectionMin(), structure, session));
+                                dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, prompt.getSelectionMin(), structure, session, destroyedSnapshots));
                             });
                         } else {
+                            if (destroyedSnapshots != null && !destroyedSnapshots.isEmpty() && player.getEntityWorld().getServer() != null) {
+                                player.getEntityWorld().getServer().execute(() -> {
+                                    dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.RestoreTask(player, destroyedSnapshots, null));
+                                });
+                            }
                             PromptSessionManager.clearGeneration(player);
                         }
                     });
