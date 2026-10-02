@@ -54,13 +54,15 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
             boolean selectionLimitEnabled,
             int maxSelectionWidth,
             int maxSelectionHeight,
-            int maxSelectionDepth
+            int maxSelectionDepth,
+            boolean proceduralTexturing
     ) {
         super(Text.literal("PromptCraft Settings"));
         this.state = new SettingsState(
                 provider, apiKeys, model, showPreview, language, themeColor,
                 thickOutline, fillOpacity, outlineThroughBlocks,
-                selectionLimitEnabled, maxSelectionWidth, maxSelectionHeight, maxSelectionDepth
+                selectionLimitEnabled, maxSelectionWidth, maxSelectionHeight, maxSelectionDepth,
+                proceduralTexturing
         );
     }
 
@@ -76,6 +78,7 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
 
         tabs.clear();
         tabs.add(new CreateTab(this, layout));
+        tabs.add(new dev.promptcraft.client.gui.tab.ModifyTab(this, layout));
         tabs.add(apiTab);
         tabs.add(new AnimationsTab(this, layout));
         tabs.add(new LanguageTab(this, layout));
@@ -197,7 +200,8 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
                 state.language(), state.themeColor(), state.thickOutline(),
                 state.fillOpacity(), state.outlineThroughBlocks(),
                 state.selectionLimitEnabled(), state.maxSelectionWidth(),
-                state.maxSelectionHeight(), state.maxSelectionDepth()
+                state.maxSelectionHeight(), state.maxSelectionDepth(),
+                state.proceduralTexturing()
         ));
         state.clearDirty();
     }

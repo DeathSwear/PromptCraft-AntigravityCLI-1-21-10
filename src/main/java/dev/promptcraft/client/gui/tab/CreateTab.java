@@ -17,7 +17,6 @@ public final class CreateTab extends AbstractSettingsTab {
 
     private EditBoxWidget promptField;
     private FlatButton generateButton;
-    private FlatButton editButton;
     private FlatButton undoButton;
     private FlatButton backButton;
     private FlatButton nextButton;
@@ -43,13 +42,9 @@ public final class CreateTab extends AbstractSettingsTab {
                 .build(ctx.textRenderer(), 190, 95, Text.literal(t("Prompt", "Запрос"))));
         promptField.setText(PromptDraftState.get());
 
-        generateButton = add(new FlatButton(ctx, x, y + 100, 90, 20,
+        generateButton = add(new FlatButton(ctx, x, y + 100, 190, 20,
                 Text.literal(t("Generate", "Создать")),
                 b -> ctx.sendAction("generate", promptField.getText(), true)));
-
-        editButton = add(new FlatButton(ctx, x + 100, y + 100, 90, 20,
-                Text.literal(t("Edit", "Правка")),
-                b -> ctx.sendAction("edit", promptField.getText(), true)));
 
         undoButton = add(new FlatButton(ctx, x, y + 125, 190, 20,
                 Text.literal(undoLabel()),
@@ -102,7 +97,6 @@ public final class CreateTab extends AbstractSettingsTab {
     public void refreshLabels() {
         if (promptField == null) return;
         generateButton.setMessage(Text.literal(t("Generate", "Создать")));
-        editButton.setMessage(Text.literal(t("Edit", "Правка")));
         undoButton.setMessage(Text.literal(undoLabel()));
         backButton.setMessage(Text.literal(t("<< Back", "<< Назад")));
         nextButton.setMessage(Text.literal(t("Next >>", "Далее >>")));
@@ -119,7 +113,6 @@ public final class CreateTab extends AbstractSettingsTab {
         boolean generating = AiStreamState.isGenerating();
 
         generateButton.active = !generating;
-        editButton.active = !generating;
         promptField.active = !generating;
         backButton.active = !generating;
         nextButton.active = !generating;

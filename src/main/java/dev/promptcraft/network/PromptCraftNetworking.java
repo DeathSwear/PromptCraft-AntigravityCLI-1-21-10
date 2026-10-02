@@ -12,6 +12,7 @@ import dev.promptcraft.structure.PromptCraftStructure;
 import dev.promptcraft.structure.StructureRotationUtil;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.BlockPos;
@@ -41,6 +42,7 @@ public class PromptCraftNetworking {
                 config.maxSelectionWidth = Math.max(1, payload.maxSelectionWidth());
                 config.maxSelectionHeight = Math.max(1, payload.maxSelectionHeight());
                 config.maxSelectionDepth = Math.max(1, payload.maxSelectionDepth());
+                config.proceduralTexturing = payload.proceduralTexturing();
 
                 PromptCraftConfigManager.save();
             });
@@ -61,7 +63,7 @@ public class PromptCraftNetworking {
 
             context.server().execute(() -> {
                 ServerPlayerEntity player = context.player();
-                boolean isGenOrEdit = "generate".equals(action) || "edit".equals(action);
+                boolean isGenOrEdit = "generate".equals(action) || "modify".equals(action) || "edit".equals(action);
 
                 if (!dev.promptcraft.PromptCraftCommands.hasAccess(player)) {
                     if (isGenOrEdit) sendAiStreamEvent(player, "cancelled", "");
@@ -99,24 +101,21 @@ public class PromptCraftNetworking {
                         executeBuildProcess(player, prompt);
                     }
 
-                } else if ("edit".equals(action)) {
+                } else if ("modify".equals(action)) {
                     if (PromptSessionManager.isGenerating(player)) {
                         player.sendMessage(Text.literal(PromptCraftLang.t("A generation is already in progress.", "Генерация уже выполняется.")).formatted(Formatting.RED), false);
                         sendAiStreamEvent(player, "cancelled", "");
                         return;
                     }
 
-                    var lastOpt = PromptSessionManager.getLast(player);
-                    if (lastOpt.isEmpty()) {
-                        player.sendMessage(Text.literal(PromptCraftLang.t("No previous prompt to edit!", "Нет предыдущего запроса для правки!")).formatted(Formatting.RED), false);
+                    PlayerSelection selection = dev.promptcraft.selection.SelectionManager.get(player);
+                    if (!selection.isComplete()) {
+                        player.sendMessage(Text.literal(PromptCraftLang.t("You must select an area first!", "Сначала нужно выделить область!")).formatted(Formatting.RED), false);
                         sendAiStreamEvent(player, "cancelled", "");
                         return;
                     }
-                    PendingPrompt last = lastOpt.get();
-                    String combined = "Original request: " + last.getPrompt() + ". User edit request: " + promptText + ". Please modify the design accordingly.";
-                    PendingPrompt newPrompt = new PendingPrompt(combined, last.getSelectionMin(), last.getSelectionMax(), last.getWidth(), last.getHeight(), last.getDepth());
-                    PromptSessionManager.setLast(player, newPrompt);
-                    executeBuildProcess(player, newPrompt);
+
+                    executeModifyProcess(player, selection, promptText);
 
                 } else if ("undo".equals(action)) {
                     var activeSession = PromptSessionManager.getActiveGeneration(player);
@@ -218,7 +217,8 @@ public class PromptCraftNetworking {
                 config.language, config.themeColor, config.thickSelectionOutline,
                 config.selectionFillOpacity, config.selectionOutlineThroughBlocks,
                 config.selectionLimitEnabled, config.maxSelectionWidth,
-                config.maxSelectionHeight, config.maxSelectionDepth
+                config.maxSelectionHeight, config.maxSelectionDepth,
+                config.proceduralTexturing
         ));
     }
 
@@ -258,6 +258,47 @@ public class PromptCraftNetworking {
                         }
                     });
         }));
+    }
+
+    private static void executeModifyProcess(ServerPlayerEntity player, dev.promptcraft.selection.PlayerSelection selection, String promptText) {
+        GenerationSession session = PromptSessionManager.startGeneration(player);
+        ServerWorld world = player.getEntityWorld();
+        BlockPos min = selection.getMin();
+        BlockPos max = selection.getMax();
+        int width = selection.getWidth();
+        int height = selection.getHeight();
+        int depth = selection.getDepth();
+
+        player.sendMessage(Text.literal(PromptCraftLang.t("Analyzing selected area...", "Анализ выделенной области...")).formatted(Formatting.AQUA), false);
+
+        String compactExisting = dev.promptcraft.structure.StructureScanner.scanToCompactJson(world, min, max, 250);
+
+        player.sendMessage(Text.literal(PromptCraftLang.t("Contacting AI for modification...", "Связь с ИИ для изменения области...")).formatted(Formatting.AQUA), false);
+
+        dev.promptcraft.ai.AiClient.requestModify(player, promptText, width, height, depth, compactExisting, session)
+                .thenAccept(structure -> {
+                    if (session.isCancelled()) return;
+
+                    if (structure != null && structure.operations != null && !structure.operations.isEmpty() && player.getEntityWorld().getServer() != null) {
+                        player.getEntityWorld().getServer().execute(() -> {
+                            if (session.isCancelled()) return;
+                            player.sendMessage(Text.literal(PromptCraftLang.t("AI response received! Applying changes...", "Ответ ИИ получен! Применяем изменения...")).formatted(Formatting.GREEN), false);
+                            // Внимание: мы НЕ вызываем DestructionTask! Существующие блоки остаются, накладываются только новые.
+                            dev.promptcraft.task.TaskManager.addTask(new dev.promptcraft.task.BuildTask(player, min, structure, session, null));
+                        });
+                    } else {
+                        if (player.getEntityWorld().getServer() != null) {
+                            player.getEntityWorld().getServer().execute(() -> {
+                                if (!session.isCancelled()) {
+                                    player.sendMessage(Text.literal(PromptCraftLang.t("AI returned no changes or an error occurred.", "ИИ не вернул изменений или произошла ошибка.")).formatted(Formatting.RED), false);
+                                }
+                                PromptSessionManager.clearGeneration(player);
+                            });
+                        } else {
+                            PromptSessionManager.clearGeneration(player);
+                        }
+                    }
+                });
     }
 
     private static void executeFreeBuildProcess(ServerPlayerEntity player, PendingPrompt prompt) {

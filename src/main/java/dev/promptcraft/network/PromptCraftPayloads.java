@@ -36,6 +36,7 @@ public final class PromptCraftPayloads {
             boolean showPreview, String language, String themeColor,
             boolean thickOutline, float fillOpacity, boolean outlineThroughBlocks,
             boolean selectionLimitEnabled, int maxSelectionWidth, int maxSelectionHeight, int maxSelectionDepth,
+            boolean proceduralTexturing,
             PacketByteBuf buf
     ) {
         buf.writeString(provider != null ? provider : "");
@@ -57,6 +58,7 @@ public final class PromptCraftPayloads {
         buf.writeInt(maxSelectionWidth);
         buf.writeInt(maxSelectionHeight);
         buf.writeInt(maxSelectionDepth);
+        buf.writeBoolean(proceduralTexturing);
     }
 
     static SaveGuiPayload readSaveGui(PacketByteBuf buf) {
@@ -70,7 +72,8 @@ public final class PromptCraftPayloads {
                 provider, apiKeys, buf.readString(), buf.readBoolean(),
                 buf.readString(), buf.readString(), buf.readBoolean(),
                 buf.readFloat(), buf.readBoolean(), buf.readBoolean(),
-                buf.readInt(), buf.readInt(), buf.readInt()
+                buf.readInt(), buf.readInt(), buf.readInt(),
+                buf.readBoolean()
         );
     }
 
@@ -85,7 +88,8 @@ public final class PromptCraftPayloads {
                 provider, apiKeys, buf.readString(), buf.readBoolean(),
                 buf.readString(), buf.readString(), buf.readBoolean(),
                 buf.readFloat(), buf.readBoolean(), buf.readBoolean(),
-                buf.readInt(), buf.readInt(), buf.readInt()
+                buf.readInt(), buf.readInt(), buf.readInt(),
+                buf.readBoolean()
         );
     }
 
@@ -125,11 +129,12 @@ public final class PromptCraftPayloads {
             String provider, Map<String, String> apiKeys, String model,
             boolean showPreview, String language, String themeColor,
             boolean thickOutline, float fillOpacity, boolean outlineThroughBlocks,
-            boolean selectionLimitEnabled, int maxSelectionWidth, int maxSelectionHeight, int maxSelectionDepth
+            boolean selectionLimitEnabled, int maxSelectionWidth, int maxSelectionHeight, int maxSelectionDepth,
+            boolean proceduralTexturing
     ) implements CustomPayload {
         public static final CustomPayload.Id<SaveGuiPayload> ID = new CustomPayload.Id<>(Identifier.of(PromptCraftMod.MOD_ID, "save_gui"));
         public static final PacketCodec<PacketByteBuf, SaveGuiPayload> CODEC = PacketCodec.of(
-                (val, buf) -> writeGuiSettings(val.provider, val.apiKeys, val.model, val.showPreview, val.language, val.themeColor, val.thickOutline, val.fillOpacity, val.outlineThroughBlocks, val.selectionLimitEnabled, val.maxSelectionWidth, val.maxSelectionHeight, val.maxSelectionDepth, buf),
+                (val, buf) -> writeGuiSettings(val.provider, val.apiKeys, val.model, val.showPreview, val.language, val.themeColor, val.thickOutline, val.fillOpacity, val.outlineThroughBlocks, val.selectionLimitEnabled, val.maxSelectionWidth, val.maxSelectionHeight, val.maxSelectionDepth, val.proceduralTexturing, buf),
                 PromptCraftPayloads::readSaveGui
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
@@ -161,11 +166,12 @@ public final class PromptCraftPayloads {
             String provider, Map<String, String> apiKeys, String model,
             boolean showPreview, String language, String themeColor,
             boolean thickOutline, float fillOpacity, boolean outlineThroughBlocks,
-            boolean selectionLimitEnabled, int maxSelectionWidth, int maxSelectionHeight, int maxSelectionDepth
+            boolean selectionLimitEnabled, int maxSelectionWidth, int maxSelectionHeight, int maxSelectionDepth,
+            boolean proceduralTexturing
     ) implements CustomPayload {
         public static final CustomPayload.Id<OpenGuiPayload> ID = new CustomPayload.Id<>(Identifier.of(PromptCraftMod.MOD_ID, "open_gui"));
         public static final PacketCodec<PacketByteBuf, OpenGuiPayload> CODEC = PacketCodec.of(
-                (val, buf) -> writeGuiSettings(val.provider, val.apiKeys, val.model, val.showPreview, val.language, val.themeColor, val.thickOutline, val.fillOpacity, val.outlineThroughBlocks, val.selectionLimitEnabled, val.maxSelectionWidth, val.maxSelectionHeight, val.maxSelectionDepth, buf),
+                (val, buf) -> writeGuiSettings(val.provider, val.apiKeys, val.model, val.showPreview, val.language, val.themeColor, val.thickOutline, val.fillOpacity, val.outlineThroughBlocks, val.selectionLimitEnabled, val.maxSelectionWidth, val.maxSelectionHeight, val.maxSelectionDepth, val.proceduralTexturing, buf),
                 PromptCraftPayloads::readOpenGui
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }

@@ -12,6 +12,7 @@ public final class VisualTab extends AbstractSettingsTab {
     private FlatButton outlineButton;
     private FlatButton outlineThroughBlocksButton;
     private OpacitySlider opacitySlider;
+    private FlatButton proceduralButton;
 
     public VisualTab(SettingsContext ctx, Layout layout) {
         super(ctx, layout);
@@ -42,6 +43,13 @@ public final class VisualTab extends AbstractSettingsTab {
                 }));
 
         opacitySlider = add(new OpacitySlider(ctx, x, y + 85, 190, 20, state().fillOpacity()));
+
+        proceduralButton = add(new FlatButton(ctx, x, y + 125, 190, 20,
+                Text.literal(proceduralLabel()),
+                b -> {
+                    state().toggleProceduralTexturing();
+                    b.setMessage(Text.literal(proceduralLabel()));
+                }));
     }
 
     private String outlineLabel() {
@@ -54,6 +62,11 @@ public final class VisualTab extends AbstractSettingsTab {
                 + (state().outlineThroughBlocks() ? t("ON", "ВКЛ") : t("OFF", "ВЫКЛ"));
     }
 
+    private String proceduralLabel() {
+        return t("Gradients & Weathering: ", "Градиенты и шум: ")
+                + (state().proceduralTexturing() ? t("ON", "ВКЛ") : t("OFF", "ВЫКЛ"));
+    }
+
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         int x = layout.contentX() - 5;
@@ -62,6 +75,7 @@ public final class VisualTab extends AbstractSettingsTab {
         context.drawTextWithShadow(ctx.textRenderer(), t("Outline:", "Обводка:"), x, y - 10, 0xFFFFFF);
         context.drawTextWithShadow(ctx.textRenderer(), t("Through blocks:", "Сквозь блоки:"), x, y + 30, 0xFFFFFF);
         context.drawTextWithShadow(ctx.textRenderer(), t("Fill opacity:", "Прозрачность заливки:"), x, y + 70, 0xFFFFFF);
+        context.drawTextWithShadow(ctx.textRenderer(), t("Procedural texturing:", "Процедурные градиенты:"), x, y + 110, 0xFFFFFF);
     }
 
     @Override
@@ -70,5 +84,8 @@ public final class VisualTab extends AbstractSettingsTab {
         outlineButton.setMessage(Text.literal(outlineLabel()));
         outlineThroughBlocksButton.setMessage(Text.literal(throughBlocksLabel()));
         opacitySlider.updateMessage();
+        if (proceduralButton != null) {
+            proceduralButton.setMessage(Text.literal(proceduralLabel()));
+        }
     }
 }

@@ -6,6 +6,7 @@ import dev.promptcraft.session.GenerationSession;
 import dev.promptcraft.session.PromptSessionManager;
 import dev.promptcraft.structure.BlockSnapshot;
 import dev.promptcraft.structure.HistoryManager;
+import dev.promptcraft.structure.ProceduralTexturizer;
 import dev.promptcraft.structure.PromptCraftStructure;
 import dev.promptcraft.structure.StructureBlockCodec;
 import net.minecraft.block.BlockState;
@@ -52,6 +53,7 @@ public class BuildTask implements Task {
 
     // --- Прогресс ---
     private final long totalCells;
+    private final int structureHeight;
     private long visited = 0L;
     private int lastSentPercent = -1;
 
@@ -70,6 +72,7 @@ public class BuildTask implements Task {
             recordedPositions.add(s.pos());
         }
         this.totalCells = estimateTotalCells(structure);
+        this.structureHeight = structure != null ? Math.max(1, structure.computeBounds().height()) : 16;
         if (session != null) session.markBuildStarted();
         PromptCraftNetworking.sendBuildProgress(player, 0, true);
     }
@@ -156,8 +159,9 @@ public class BuildTask implements Task {
                 if ("place".equals(op.type) && op.pos != null && op.pos.length == 3) {
                     BlockPos wp = origin.add(op.pos[0], op.pos[1], op.pos[2]);
                     recordUndo(wp);
-                    world.setBlockState(wp, state, flags);
-                    recordIfConnecting(wp, state);
+                    BlockState texturedState = ProceduralTexturizer.apply(state, wp, op.pos[1], structureHeight);
+                    world.setBlockState(wp, texturedState, flags);
+                    recordIfConnecting(wp, texturedState);
                     budget--;
                     visited++;
                     opIndex++;
@@ -191,7 +195,8 @@ public class BuildTask implements Task {
                 if (!skip) {
                     BlockPos wp = origin.add(curX, curY, curZ);
                     recordUndo(wp);
-                    world.setBlockState(wp, opState, opFlags);
+                    BlockState texturedState = ProceduralTexturizer.apply(opState, wp, curY, structureHeight);
+                    world.setBlockState(wp, texturedState, opFlags);
                     if (connecting) connectingPositions.add(wp);
                 }
                 budget--;

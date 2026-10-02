@@ -24,6 +24,7 @@ public final class SettingsState {
     private boolean thickOutline;
     private float fillOpacity;
     private boolean outlineThroughBlocks;
+    private boolean proceduralTexturing = true;
 
     private boolean selectionLimitEnabled;
     private int maxSelectionWidth;
@@ -50,7 +51,8 @@ public final class SettingsState {
             boolean selectionLimitEnabled,
             int maxSelectionWidth,
             int maxSelectionHeight,
-            int maxSelectionDepth
+            int maxSelectionDepth,
+            boolean proceduralTexturing
     ) {
         this.provider = provider != null && !provider.isBlank() ? provider : "nvidia";
         this.apiKeys = apiKeys != null ? apiKeys : new HashMap<>();
@@ -61,6 +63,7 @@ public final class SettingsState {
         this.thickOutline = thickOutline;
         this.fillOpacity = Math.max(0.0f, Math.min(1.0f, fillOpacity));
         this.outlineThroughBlocks = outlineThroughBlocks;
+        this.proceduralTexturing = proceduralTexturing;
 
         this.selectionLimitEnabled = selectionLimitEnabled;
         this.maxSelectionWidth = Math.max(1, maxSelectionWidth);
@@ -195,6 +198,15 @@ public final class SettingsState {
 
     public void toggleOutlineThroughBlocks() {
         outlineThroughBlocks = !outlineThroughBlocks;
+        markDirty();
+    }
+
+    public boolean proceduralTexturing() {
+        return proceduralTexturing;
+    }
+
+    public void toggleProceduralTexturing() {
+        proceduralTexturing = !proceduralTexturing;
         markDirty();
     }
 

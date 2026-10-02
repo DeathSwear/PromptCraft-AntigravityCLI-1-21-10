@@ -72,6 +72,27 @@ public class AiClient {
         return requestBuildInternal(player, prompt, "", width, height, depth, session, true, limitEnabled, 0, 0);
     }
 
+    /**
+     * Режим модификации (In-painting): передаёт в ИИ существующую структуру выделенной области
+     * и запрос пользователя на доработку.
+     */
+    public static CompletableFuture<PromptCraftStructure> requestModify(
+            ServerPlayerEntity player, String prompt, int width, int height, int depth,
+            String existingBlocksJson, GenerationSession session) {
+        String modifyContext = "\n\n=== EXISTING STRUCTURE IN THIS AREA ===\n" +
+                "The selected area already contains the following existing blocks (local coordinates relative to [0,0,0]):\n" +
+                existingBlocksJson + "\n\n" +
+                "=== INSTRUCTION FOR MODIFICATION ===\n" +
+                "You are modifying or adding to the existing structure above.\n" +
+                "- Do NOT rebuild the entire structure from scratch unless requested.\n" +
+                "- Only output the new or modified blocks needed to fulfill the user's request.\n" +
+                "- To carve new openings or windows into existing walls, place 'minecraft:air' at those positions.\n" +
+                "- To add new features (e.g. balconies, roofs, decorations, furniture), place them in the empty coordinates.\n" +
+                "- All coordinates must stay within 0<=x<=" + (width - 1) + ", 0<=y<=" + (height - 1) + ", 0<=z<=" + (depth - 1) + ".\n";
+
+        return requestBuildInternal(player, prompt, modifyContext, width, height, depth, session, false, true, 0, 0);
+    }
+
     // === CORE ================================================================
 
     private static final int MAX_TRANSIENT_RETRIES = 3;

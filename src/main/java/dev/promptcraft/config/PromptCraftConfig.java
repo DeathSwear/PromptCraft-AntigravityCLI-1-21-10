@@ -14,6 +14,7 @@ public class PromptCraftConfig {
     public boolean showProcessMessages = true;
     public boolean enableDestructionAnimation = true;
     public boolean showSelectionPreview = true;
+    public boolean proceduralTexturing = true;
 
     public boolean thickSelectionOutline = true;
     public float selectionFillOpacity = 0.075f;

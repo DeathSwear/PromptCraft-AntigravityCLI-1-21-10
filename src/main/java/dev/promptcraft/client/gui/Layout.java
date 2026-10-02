@@ -25,7 +25,7 @@ public final class Layout {
     }
 
     public int menuY() {
-        return centerY() - 75;
+        return centerY() - 95;
     }
 
     public int tabItemW() {
@@ -37,7 +37,7 @@ public final class Layout {
     }
 
     public int tabStep() {
-        return 25;
+        return 23;
     }
 
     /** Левый край области контента. */
@@ -46,12 +46,12 @@ public final class Layout {
     }
 
     public int contentY() {
-        return menuY();
+        return centerY() - 75;
     }
 
-    /** Таб «Создать» начинается выше остальных. */
+    /** Табы «Создать» и «Изменить» начинаются выше остальных. */
     public int createY() {
-        return menuY() - 25;
+        return centerY() - 100;
     }
 
     public int panelLeft() {

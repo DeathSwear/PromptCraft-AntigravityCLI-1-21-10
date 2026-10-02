@@ -34,6 +34,10 @@ public class PromptCraftClient implements ClientModInitializer {
     private static BlockPos firstPos = null;
     private static BlockPos secondPos = null;
 
+    public static BlockPos getFirstPos() { return firstPos; }
+    public static BlockPos getSecondPos() { return secondPos; }
+    public static boolean hasCompleteSelection() { return firstPos != null && secondPos != null; }
+
     private static boolean scrollHookInstalled = false;
 
     private static KeyBinding rotateGhostKey;
@@ -169,7 +173,8 @@ public class PromptCraftClient implements ClientModInitializer {
                             payload.selectionLimitEnabled(),
                             payload.maxSelectionWidth(),
                             payload.maxSelectionHeight(),
-                            payload.maxSelectionDepth()
+                            payload.maxSelectionDepth(),
+                            payload.proceduralTexturing()
                     )
             ));
         });
