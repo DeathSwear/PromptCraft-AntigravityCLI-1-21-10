@@ -114,9 +114,9 @@ public final class PromptCraftPayloads {
         public static final PacketCodec<PacketByteBuf, GuiActionPayload> CODEC = PacketCodec.of(
                 (val, buf) -> {
                     buf.writeString(val.action);
-                    buf.writeString(val.promptText);
+                    buf.writeString(val.promptText != null ? val.promptText : "", 65536);
                 },
-                buf -> new GuiActionPayload(buf.readString(), buf.readString())
+                buf -> new GuiActionPayload(buf.readString(), buf.readString(65536))
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
@@ -176,9 +176,9 @@ public final class PromptCraftPayloads {
         public static final PacketCodec<PacketByteBuf, AiStreamPayload> CODEC = PacketCodec.of(
                 (val, buf) -> {
                     buf.writeString(val.eventType);
-                    buf.writeString(val.payload == null ? "" : val.payload);
+                    buf.writeString(val.payload == null ? "" : val.payload, 262144);
                 },
-                buf -> new AiStreamPayload(buf.readString(), buf.readString())
+                buf -> new AiStreamPayload(buf.readString(), buf.readString(262144))
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
@@ -186,8 +186,8 @@ public final class PromptCraftPayloads {
     public record StartFreePlacementPayload(String structureJson) implements CustomPayload {
         public static final CustomPayload.Id<StartFreePlacementPayload> ID = new CustomPayload.Id<>(Identifier.of(PromptCraftMod.MOD_ID, "start_free_placement"));
         public static final PacketCodec<PacketByteBuf, StartFreePlacementPayload> CODEC = PacketCodec.of(
-                (val, buf) -> buf.writeString(val.structureJson),
-                buf -> new StartFreePlacementPayload(buf.readString())
+                (val, buf) -> buf.writeString(val.structureJson != null ? val.structureJson : "", 2097152),
+                buf -> new StartFreePlacementPayload(buf.readString(2097152))
         );
         @Override public Id<? extends CustomPayload> getId() { return ID; }
     }
