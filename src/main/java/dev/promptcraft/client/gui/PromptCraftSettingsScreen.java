@@ -333,8 +333,6 @@ public class PromptCraftSettingsScreen extends Screen implements SettingsContext
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        this.renderBackground(context, mouseX, mouseY, delta);
-
         context.fill(layout.panelLeft(), layout.panelTop(), layout.panelRight(), layout.panelBottom(),
                 GuiPainter.COLOR_PANEL);
         context.drawTextWithShadow(this.textRenderer, state.t("Settings", "Настройки"),
